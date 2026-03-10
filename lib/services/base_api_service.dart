@@ -17,8 +17,7 @@ class ApiException implements Exception {
 abstract class BaseApiService {
   static const String baseUrl = AppConstants.baseUrl;
 
-  Future<Map<String, dynamic>> get(String endpoint,
-      {Map<String, String>? headers}) async {
+  Future<dynamic> get(String endpoint, {Map<String, String>? headers}) async {
     final uri = Uri.parse('$baseUrl/$endpoint');
     try {
       final response = await http.get(
@@ -35,7 +34,7 @@ abstract class BaseApiService {
     }
   }
 
-  Future<Map<String, dynamic>> post(
+  Future<dynamic> post(
     String endpoint, {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
@@ -57,10 +56,21 @@ abstract class BaseApiService {
     }
   }
 
-  Map<String, dynamic> _handleResponse(http.Response response) {
+  dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) return {};
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.body.isEmpty) return null;
+
+      // Handle the case where the response might be a string-wrapped JSON (common in some PHP APIs)
+      // or just standard JSON.
+      final decoded = jsonDecode(response.body);
+
+      // If the result is a string that starts with [ or {, it might be double-encoded JSON
+      if (decoded is String &&
+          (decoded.startsWith('[') || decoded.startsWith('{'))) {
+        return jsonDecode(decoded);
+      }
+
+      return decoded;
     }
     throw ApiException(
       message: 'Request failed',

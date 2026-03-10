@@ -9,6 +9,7 @@ import '../../core/app_text_styles.dart';
 import '../../core/design_system.dart';
 import '../../models/meal_model.dart';
 import '../../models/restaurant_model.dart';
+import '../../services/restaurant_service.dart';
 import '../../view_models/auth_view_model.dart';
 import '../../view_models/order_view_model.dart';
 import 'order_confirmation_view.dart';
@@ -23,21 +24,26 @@ class MealDetailView extends StatefulWidget {
 }
 
 class _MealDetailViewState extends State<MealDetailView> {
+  final RestaurantService _restaurantService = RestaurantService();
+  RestaurantModel? _restaurant;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderViewModel>().setCurrentMeal(widget.meal);
     });
+    _loadRestaurant();
   }
 
-  RestaurantModel? get _restaurant {
+  Future<void> _loadRestaurant() async {
+    final restaurants = await _restaurantService.getRestaurants();
     try {
-      return dummyRestaurants
-          .firstWhere((r) => r.id == widget.meal.restaurantId);
-    } catch (_) {
-      return null;
-    }
+      final r = restaurants.firstWhere((r) => r.id == widget.meal.restaurantId);
+      if (mounted) {
+        setState(() => _restaurant = r);
+      }
+    } catch (_) {}
   }
 
   Future<void> _onCreateOrder() async {

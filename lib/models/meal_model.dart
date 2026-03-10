@@ -30,16 +30,19 @@ class MealModel {
   });
 
   factory MealModel.fromJson(Map<String, dynamic> json) => MealModel(
-        id: json['id'] as String,
-        restaurantId: json['restaurant_id'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String,
-        imageUrl: json['image_url'] as String,
-        price: (json['price'] as num).toDouble(),
-        category: json['category'] as String,
-        rating: (json['rating'] as num).toDouble(),
-        isAvailable: json['is_available'] as bool,
-        isPopular: json['is_popular'] as bool,
+        id: (json['idplats'] ?? json['id'])?.toString() ?? '',
+        restaurantId:
+            (json['id_resto'] ?? json['restaurant_id'])?.toString() ?? '',
+        name: json['nom'] ?? json['name'] as String? ?? 'Plat',
+        description: json['description'] as String? ??
+            'Savourez ce délicieux plat préparé avec des ingrédients frais.',
+        imageUrl: json['image_url'] as String? ??
+            'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&auto=format&fit=crop',
+        price: (json['prix'] ?? json['price'] as num?)?.toDouble() ?? 0.0,
+        category: json['category'] as String? ?? 'Plat principal',
+        rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+        isAvailable: json['is_available'] as bool? ?? true,
+        isPopular: json['is_popular'] as bool? ?? false,
         isVegetarian: json['is_vegetarian'] as bool? ?? false,
         ingredients: List<String>.from(json['ingredients'] ?? []),
         prepTimeMin: json['prep_time_min'] as int? ?? 15,

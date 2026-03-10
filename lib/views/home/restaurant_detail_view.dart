@@ -8,16 +8,47 @@ import '../../core/app_text_styles.dart';
 import '../../core/design_system.dart';
 import '../../models/meal_model.dart';
 import '../../models/restaurant_model.dart';
+import '../../services/restaurant_service.dart';
 import '../widgets/meal_card.dart';
 import 'meal_detail_view.dart';
 
-class RestaurantDetailView extends StatelessWidget {
+class RestaurantDetailView extends StatefulWidget {
   final RestaurantModel restaurant;
 
   const RestaurantDetailView({super.key, required this.restaurant});
 
-  List<MealModel> get _meals =>
-      dummyMeals.where((m) => m.restaurantId == restaurant.id).toList();
+  @override
+  State<RestaurantDetailView> createState() => _RestaurantDetailViewState();
+}
+
+class _RestaurantDetailViewState extends State<RestaurantDetailView> {
+  final RestaurantService _restaurantService = RestaurantService();
+  List<MealModel> _meals = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMeals();
+  }
+
+  Future<void> _loadMeals() async {
+    setState(() => _isLoading = true);
+    try {
+      final meals =
+          await _restaurantService.getMealsByRestaurant(widget.restaurant.id);
+      if (mounted) {
+        setState(() {
+          _meals = meals;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +100,7 @@ class RestaurantDetailView extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(
-              imageUrl: restaurant.imageUrl,
+              imageUrl: widget.restaurant.imageUrl,
               fit: BoxFit.cover,
               placeholder: (ctx, url) => const ShimmerBox(
                   width: double.infinity, height: 250, radius: 0),
@@ -107,12 +138,13 @@ class RestaurantDetailView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(restaurant.name, style: AppTextStyles.headlineLarge)
+                    Text(widget.restaurant.name,
+                            style: AppTextStyles.headlineLarge)
                         .animate()
                         .fadeIn(duration: 400.ms)
                         .slideX(begin: -0.1, end: 0, duration: 400.ms),
                     const SizedBox(height: 4),
-                    Text(restaurant.cuisineType,
+                    Text(widget.restaurant.cuisineType,
                             style: AppTextStyles.bodyMedium.copyWith(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600))
@@ -121,24 +153,24 @@ class RestaurantDetailView extends StatelessWidget {
                   ],
                 ),
               ),
-              RatingBadge(rating: restaurant.rating),
+              RatingBadge(rating: widget.restaurant.rating),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               _statBadge(Icons.timer_outlined,
-                  '${restaurant.deliveryTimeMin} min', 'Livraison'),
+                  '${widget.restaurant.deliveryTimeMin} min', 'Livraison'),
               const SizedBox(width: 12),
               _statBadge(Icons.delivery_dining_outlined,
-                  '${restaurant.deliveryFee.toInt()} DA', 'Frais'),
+                  '${widget.restaurant.deliveryFee.toInt()} DA', 'Frais'),
               const SizedBox(width: 12),
               _statBadge(Icons.shopping_bag_outlined,
-                  '${restaurant.minOrder.toInt()} DA', 'Minimum'),
+                  '${widget.restaurant.minOrder.toInt()} DA', 'Minimum'),
             ],
           ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
           const SizedBox(height: 12),
-          Text(restaurant.description, style: AppTextStyles.bodyMedium)
+          Text(widget.restaurant.description, style: AppTextStyles.bodyMedium)
               .animate()
               .fadeIn(delay: 250.ms, duration: 400.ms),
         ],
@@ -169,13 +201,13 @@ class RestaurantDetailView extends StatelessWidget {
   }
 
   Widget _buildTags() {
-    if (restaurant.tags.isEmpty) return const SizedBox.shrink();
+    if (widget.restaurant.tags.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: restaurant.tags.map((t) => TagChip(label: t)).toList(),
+        children: widget.restaurant.tags.map((t) => TagChip(label: t)).toList(),
       ),
     ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
   }
@@ -190,7 +222,14 @@ class RestaurantDetailView extends StatelessWidget {
           child: Text('Notre menu', style: AppTextStyles.headlineMedium),
         ),
         const SizedBox(height: 12),
-        if (_meals.isEmpty)
+        if (_isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppConstants.paddingXL),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (_meals.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.all(AppConstants.paddingXL),

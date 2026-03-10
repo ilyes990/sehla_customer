@@ -12,6 +12,8 @@ class RestaurantModel {
   final bool isOpen;
   final bool isFeatured;
   final List<String> tags;
+  final String? tel;
+  final String? email;
 
   const RestaurantModel({
     required this.id,
@@ -27,23 +29,29 @@ class RestaurantModel {
     required this.isOpen,
     required this.isFeatured,
     this.tags = const [],
+    this.tel,
+    this.email,
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) =>
       RestaurantModel(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String,
-        imageUrl: json['image_url'] as String,
-        cuisineType: json['cuisine_type'] as String,
-        rating: (json['rating'] as num).toDouble(),
-        reviewsCount: json['reviews_count'] as int,
-        deliveryTimeMin: json['delivery_time_min'] as int,
-        deliveryFee: (json['delivery_fee'] as num).toDouble(),
-        minOrder: (json['min_order'] as num).toDouble(),
-        isOpen: json['is_open'] as bool,
-        isFeatured: json['is_featured'] as bool,
+        id: json['id']?.toString() ?? '',
+        name: json['nom'] ?? json['name'] as String? ?? 'Restaurant',
+        description: json['description'] as String? ??
+            'Découvrez nos délicieux plats préparés avec passion.',
+        imageUrl: json['image_url'] as String? ??
+            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop',
+        cuisineType: json['cuisine_type'] as String? ?? 'Algérienne',
+        rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+        reviewsCount: json['reviews_count'] as int? ?? 0,
+        deliveryTimeMin: json['delivery_time_min'] as int? ?? 30,
+        deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 100.0,
+        minOrder: (json['min_order'] as num?)?.toDouble() ?? 500.0,
+        isOpen: json['is_open'] as bool? ?? true,
+        isFeatured: json['is_featured'] as bool? ?? false,
         tags: List<String>.from(json['tags'] ?? []),
+        tel: json['tel']?.toString(),
+        email: json['email']?.toString(),
       );
 }
 
