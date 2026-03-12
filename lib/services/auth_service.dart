@@ -86,27 +86,77 @@ class AuthService extends BaseApiService {
     }
   }
 
-  // ── Login (still mocked – real endpoint TBD) ──────────────────────────────
+  // ── Login Customer ─────────────────────────────────────────────────────────
+  /// Calls POST https://sahladelivery.com/custumer/login_custumer.php
+  /// Body: { email, password }
+  /// The server is expected to return the user's data on success.
+  /// If the email exists only in the livreur table, we show a helpful message.
   Future<UserModel> login({
     required String email,
     required String password,
   }) async {
-    await Future.delayed(const Duration(seconds: 1));
-
     if (email.isEmpty || password.isEmpty) {
       throw const ApiException(message: 'Email et mot de passe requis');
     }
-    if (password.length < 6) {
-      throw const ApiException(message: 'Mot de passe invalide');
-    }
 
-    return UserModel(
-      id: 'u_${DateTime.now().millisecondsSinceEpoch}',
-      name: 'Ahmed Benali',
-      email: email,
-      phone: '+213 555 123 456',
-      location: 'Alger Centre',
-    );
+    final uri = Uri.parse(
+        '${BaseApiService.baseUrl}/custumer/login_custumer.php');
+    final body = jsonEncode({
+      'email': email.trim(),
+      'password': password,
+    });
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: body,
+      );
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Support both flat and nested response shapes
+        final data = decoded['customer'] as Map<String, dynamic>? ??
+            decoded['user'] as Map<String, dynamic>? ??
+            decoded['custumer'] as Map<String, dynamic>? ??
+            decoded;
+
+        return UserModel.fromJson({
+          ...data,
+          'email': email.trim(), // guarantee email is set
+        });
+      }
+
+      // Special case: user exists but as a livreur, not a customer
+      final serverErr = (decoded['error'] as String? ??
+              decoded['message'] as String? ??
+              '')
+          .toLowerCase();
+      if (serverErr.contains('livreur') ||
+          serverErr.contains('not found') ||
+          serverErr.contains('introuvable')) {
+        throw const ApiException(
+          message:
+              'Ce compte n\'existe pas en tant que client. '
+              'Vous êtes peut-être inscrit en tant que livreur. '
+              'Veuillez vous inscrire comme client pour continuer.',
+        );
+      }
+
+      final errorMsg = decoded['error'] as String? ??
+          decoded['message'] as String? ??
+          'Connexion échouée (${response.statusCode})';
+      throw ApiException(message: errorMsg, statusCode: response.statusCode);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(
+          message: 'Erreur réseau : impossible de joindre le serveur');
+    }
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────

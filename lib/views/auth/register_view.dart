@@ -15,13 +15,27 @@ class RegisterView extends StatefulWidget {
   State<RegisterView> createState() => _RegisterViewState();
 }
 
-class _RegisterViewState extends State<RegisterView> {
+class _RegisterViewState extends State<RegisterView>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nomController = TextEditingController(); // nom
+
+  final _nomController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _telfController = TextEditingController(); // telf
-  final _locationController = TextEditingController(); // location
+  final _telfController = TextEditingController();
+  final _locationController = TextEditingController();
+
+  UserType _selectedRole = UserType.customer;
+  late AnimationController _roleAnimController;
+
+  @override
+  void initState() {
+    super.initState();
+    _roleAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
 
   @override
   void dispose() {
@@ -30,21 +44,46 @@ class _RegisterViewState extends State<RegisterView> {
     _passwordController.dispose();
     _telfController.dispose();
     _locationController.dispose();
+    _roleAnimController.dispose();
     super.dispose();
+  }
+
+  void _selectRole(UserType role) {
+    if (_selectedRole == role) return;
+    setState(() => _selectedRole = role);
+    _roleAnimController.forward(from: 0);
+    // Clear errors when switching
+    context.read<AuthViewModel>().clearError();
+    _formKey.currentState?.reset();
   }
 
   Future<void> _onRegister() async {
     if (!_formKey.currentState!.validate()) return;
     final vm = context.read<AuthViewModel>();
-    final success = await vm.register(
-      nom: _nomController.text.trim(),
-      telf: _telfController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      location: _locationController.text.trim(),
-    );
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, AppConstants.routeHome);
+
+    bool success;
+    if (_selectedRole == UserType.livreur) {
+      success = await vm.registerLivreur(
+        nom: _nomController.text.trim(),
+        tel: _telfController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (success && mounted) {
+        Navigator.pushReplacementNamed(context, AppConstants.routeLivreurHome);
+      }
+    } else {
+      success = await vm.register(
+        nom: _nomController.text.trim(),
+        telf: _telfController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        location: _locationController.text.trim(),
+      );
+      if (success && mounted) {
+        Navigator.pushReplacementNamed(
+            context, AppConstants.routeLocationPicker);
+      }
     }
   }
 
@@ -65,7 +104,9 @@ class _RegisterViewState extends State<RegisterView> {
                   children: [
                     const SizedBox(height: 24),
                     _buildHeader(),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
+                    _buildRoleSelector(),
+                    const SizedBox(height: 28),
                     _buildForm(),
                     const SizedBox(height: 24),
                     _buildRegisterButton(),
@@ -85,6 +126,7 @@ class _RegisterViewState extends State<RegisterView> {
   }
 
   Widget _buildHeader() {
+    final isLivreur = _selectedRole == UserType.livreur;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -103,21 +145,110 @@ class _RegisterViewState extends State<RegisterView> {
           ),
         ),
         const SizedBox(height: 24),
-        Text('Créer un compte 🚀', style: AppTextStyles.displayMedium)
-            .animate()
-            .fadeIn(duration: 500.ms)
-            .slideX(begin: -0.2, end: 0, duration: 500.ms),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: Text(
+            isLivreur ? 'Rejoignez la flotte 🛵' : 'Créer un compte 🚀',
+            key: ValueKey(isLivreur),
+            style: AppTextStyles.displayMedium,
+          ),
+        ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.2, end: 0, duration: 500.ms),
         const SizedBox(height: 6),
-        Text(
-          'Rejoignez Sehla et savourez la livraison rapide',
-          style:
-              AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: Text(
+            isLivreur
+                ? 'Inscrivez-vous comme livreur Sehla'
+                : 'Rejoignez Sehla et savourez la livraison rapide',
+            key: ValueKey('sub_$isLivreur'),
+            style: AppTextStyles.bodyLarge
+                .copyWith(color: AppColors.textSecondary),
+          ),
         ).animate().fadeIn(delay: 150.ms, duration: 500.ms),
       ],
     );
   }
 
+  Widget _buildRoleSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppConstants.radiusL),
+      ),
+      child: Row(
+        children: [
+          _buildRoleTab(
+            label: 'Client',
+            icon: Icons.person_outline_rounded,
+            role: UserType.customer,
+          ),
+          _buildRoleTab(
+            label: 'Livreur',
+            icon: Icons.delivery_dining_rounded,
+            role: UserType.livreur,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 100.ms, duration: 400.ms).slideY(
+          begin: 0.15,
+          end: 0,
+          delay: 100.ms,
+          duration: 400.ms,
+        );
+  }
+
+  Widget _buildRoleTab({
+    required String label,
+    required IconData icon,
+    required UserType role,
+  }) {
+    final isSelected = _selectedRole == role;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _selectRole(role),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppConstants.radiusM),
+            boxShadow: isSelected ? AppColors.cardShadow : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  fontWeight:
+                      isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildForm() {
+    final isLivreur = _selectedRole == UserType.livreur;
     return Form(
       key: _formKey,
       child: Column(
@@ -156,7 +287,7 @@ class _RegisterViewState extends State<RegisterView> {
               .slideY(begin: 0.2, end: 0, delay: 280.ms, duration: 400.ms),
           const SizedBox(height: 16),
 
-          // telf
+          // phone (tel for livreur, telf for customer)
           CustomTextField(
             label: 'Numéro de téléphone',
             hint: '0555 123 456',
@@ -172,20 +303,35 @@ class _RegisterViewState extends State<RegisterView> {
               .slideY(begin: 0.2, end: 0, delay: 360.ms, duration: 400.ms),
           const SizedBox(height: 16),
 
-          // location
-          CustomTextField(
-            label: 'Ville / Localisation',
-            hint: 'Ex : Oran, Alger, Constantine…',
-            controller: _locationController,
-            prefixIcon: Icons.location_on_outlined,
-            textInputAction: TextInputAction.next,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Localisation requise' : null,
-          )
-              .animate()
-              .fadeIn(delay: 440.ms, duration: 400.ms)
-              .slideY(begin: 0.2, end: 0, delay: 440.ms, duration: 400.ms),
-          const SizedBox(height: 16),
+          // location — customer only
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: isLivreur
+                ? const SizedBox.shrink()
+                : Column(
+                    children: [
+                      CustomTextField(
+                        label: 'Ville / Localisation',
+                        hint: 'Ex : Oran, Alger, Constantine…',
+                        controller: _locationController,
+                        prefixIcon: Icons.location_on_outlined,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Localisation requise'
+                            : null,
+                      )
+                          .animate()
+                          .fadeIn(delay: 440.ms, duration: 400.ms)
+                          .slideY(
+                              begin: 0.2,
+                              end: 0,
+                              delay: 440.ms,
+                              duration: 400.ms),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+          ),
 
           // password
           CustomTextField(
@@ -210,12 +356,15 @@ class _RegisterViewState extends State<RegisterView> {
   }
 
   Widget _buildRegisterButton() {
+    final isLivreur = _selectedRole == UserType.livreur;
     return Consumer<AuthViewModel>(
       builder: (context, vm, _) => CustomButton(
-        label: 'Créer mon compte',
+        label: isLivreur ? 'Devenir livreur' : 'Créer mon compte',
         isLoading: vm.isLoading,
         onPressed: vm.isLoading ? null : _onRegister,
-        prefixIcon: Icons.rocket_launch_rounded,
+        prefixIcon: isLivreur
+            ? Icons.delivery_dining_rounded
+            : Icons.rocket_launch_rounded,
       ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
     );
   }
@@ -237,8 +386,8 @@ class _RegisterViewState extends State<RegisterView> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(vm.errorMessage!,
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.error)),
+                    style:
+                        AppTextStyles.bodySmall.copyWith(color: AppColors.error)),
               ),
             ],
           ),

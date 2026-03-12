@@ -10,6 +10,7 @@ import 'view_models/order_view_model.dart';
 import 'views/auth/login_view.dart';
 import 'views/auth/register_view.dart';
 import 'views/home/home_view.dart';
+import 'views/livreur/livreur_home_view.dart';
 import 'views/location/location_picker_view.dart';
 import 'views/splash/splash_screen.dart';
 
@@ -50,6 +51,8 @@ class SehlaApp extends StatelessWidget {
           AppConstants.routeRegister: (_) => const RegisterView(),
           AppConstants.routeLocationPicker: (_) => const LocationPickerView(),
           AppConstants.routeHome: (_) => const HomeView(),
+          // Livreur
+          AppConstants.routeLivreurHome: (_) => const LivreurHomeView(),
         },
       ),
     );

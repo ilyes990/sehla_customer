@@ -6,7 +6,7 @@ class AppConstants {
   static const String appTagline = 'Livraison rapide, toujours frais';
   static const String baseUrl = 'https://sahladelivery.com';
 
-  // Routes
+  // Routes — Customer
   static const String routeSplash = '/';
   static const String routeLogin = '/login';
   static const String routeRegister = '/register';
@@ -15,6 +15,9 @@ class AppConstants {
   static const String routeRestaurantDetail = '/restaurant-detail';
   static const String routeMealDetail = '/meal-detail';
   static const String routeOrderConfirmation = '/order-confirmation';
+
+  // Routes — Livreur
+  static const String routeLivreurHome = '/livreur/home';
 
   // Dimensions
   static const double paddingXS = 4.0;

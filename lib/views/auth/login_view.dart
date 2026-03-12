@@ -20,6 +20,8 @@ class _LoginViewState extends State<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  UserType _selectedRole = UserType.customer;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -27,15 +29,34 @@ class _LoginViewState extends State<LoginView> {
     super.dispose();
   }
 
+  void _selectRole(UserType role) {
+    if (_selectedRole == role) return;
+    setState(() => _selectedRole = role);
+    context.read<AuthViewModel>().clearError();
+    _formKey.currentState?.reset();
+  }
+
   Future<void> _onLogin() async {
     if (!_formKey.currentState!.validate()) return;
     final vm = context.read<AuthViewModel>();
-    final success = await vm.login(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, AppConstants.routeLocationPicker);
+
+    if (_selectedRole == UserType.livreur) {
+      final success = await vm.loginLivreur(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (success && mounted) {
+        Navigator.pushReplacementNamed(context, AppConstants.routeLivreurHome);
+      }
+    } else {
+      final success = await vm.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (success && mounted) {
+        Navigator.pushReplacementNamed(
+            context, AppConstants.routeLocationPicker);
+      }
     }
   }
 
@@ -56,7 +77,9 @@ class _LoginViewState extends State<LoginView> {
                   children: [
                     const SizedBox(height: 40),
                     _buildHeader(),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 28),
+                    _buildRoleSelector(),
+                    const SizedBox(height: 32),
                     _buildForm(),
                     const SizedBox(height: 24),
                     _buildLoginButton(),
@@ -76,23 +99,110 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildHeader() {
+    final isLivreur = _selectedRole == UserType.livreur;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const AppLogo(size: 56, showText: false, dark: true),
         const SizedBox(height: 24),
-        Text('Bienvenue ! 👋', style: AppTextStyles.displayMedium)
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: Text(
+            isLivreur ? 'Content de vous revoir ! 🛵' : 'Bienvenue ! 👋',
+            key: ValueKey(isLivreur),
+            style: AppTextStyles.displayMedium,
+          ),
+        )
             .animate()
             .fadeIn(duration: 500.ms)
-            .slideX(
-                begin: -0.2, end: 0, duration: 500.ms, curve: Curves.easeOut),
+            .slideX(begin: -0.2, end: 0, duration: 500.ms, curve: Curves.easeOut),
         const SizedBox(height: 6),
-        Text(
-          'Connectez-vous pour commander\nvos plats préférés',
-          style:
-              AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: Text(
+            isLivreur
+                ? 'Connectez-vous à votre espace livreur'
+                : 'Connectez-vous pour commander\nvos plats préférés',
+            key: ValueKey('sub_$isLivreur'),
+            style:
+                AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+          ),
         ).animate().fadeIn(delay: 150.ms, duration: 500.ms),
       ],
+    );
+  }
+
+  Widget _buildRoleSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppConstants.radiusL),
+      ),
+      child: Row(
+        children: [
+          _buildRoleTab(
+            label: 'Client',
+            icon: Icons.person_outline_rounded,
+            role: UserType.customer,
+          ),
+          _buildRoleTab(
+            label: 'Livreur',
+            icon: Icons.delivery_dining_rounded,
+            role: UserType.livreur,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(
+          begin: 0.15,
+          end: 0,
+          delay: 200.ms,
+          duration: 400.ms,
+        );
+  }
+
+  Widget _buildRoleTab({
+    required String label,
+    required IconData icon,
+    required UserType role,
+  }) {
+    final isSelected = _selectedRole == role;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _selectRole(role),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppConstants.radiusM),
+            boxShadow: isSelected ? AppColors.cardShadow : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color:
+                    isSelected ? AppColors.primary : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  fontWeight:
+                      isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -113,10 +223,10 @@ class _LoginViewState extends State<LoginView> {
               if (!v.contains('@')) return 'Email invalide';
               return null;
             },
-          ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(
+          ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(
               begin: 0.2,
               end: 0,
-              delay: 200.ms,
+              delay: 300.ms,
               duration: 400.ms,
               curve: Curves.easeOut),
           const SizedBox(height: 20),
@@ -132,10 +242,10 @@ class _LoginViewState extends State<LoginView> {
               if (v.length < 6) return 'Minimum 6 caractères';
               return null;
             },
-          ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(
+          ).animate().fadeIn(delay: 380.ms, duration: 400.ms).slideY(
               begin: 0.2,
               end: 0,
-              delay: 300.ms,
+              delay: 380.ms,
               duration: 400.ms,
               curve: Curves.easeOut),
           const SizedBox(height: 12),
@@ -145,8 +255,8 @@ class _LoginViewState extends State<LoginView> {
               onPressed: () {},
               child: Text(
                 'Mot de passe oublié ?',
-                style: AppTextStyles.labelMedium
-                    .copyWith(color: AppColors.primary),
+                style:
+                    AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
               ),
             ),
           ),
@@ -156,16 +266,20 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildLoginButton() {
+    final isLivreur = _selectedRole == UserType.livreur;
     return Consumer<AuthViewModel>(
       builder: (context, vm, _) {
         return CustomButton(
-          label: 'Se connecter',
+          label: isLivreur ? 'Connexion livreur' : 'Se connecter',
           isLoading: vm.isLoading,
           onPressed: vm.isLoading ? null : _onLogin,
-        ).animate().fadeIn(delay: 400.ms, duration: 400.ms).slideY(
+          prefixIcon: isLivreur
+              ? Icons.delivery_dining_rounded
+              : Icons.login_rounded,
+        ).animate().fadeIn(delay: 460.ms, duration: 400.ms).slideY(
             begin: 0.2,
             end: 0,
-            delay: 400.ms,
+            delay: 460.ms,
             duration: 400.ms,
             curve: Curves.easeOut);
       },
