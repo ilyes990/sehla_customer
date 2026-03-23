@@ -29,24 +29,47 @@ class MealModel {
     this.prepTimeMin = 15,
   });
 
-  factory MealModel.fromJson(Map<String, dynamic> json) => MealModel(
-        id: (json['idplats'] ?? json['id'])?.toString() ?? '',
-        restaurantId:
-            (json['id_resto'] ?? json['restaurant_id'])?.toString() ?? '',
-        name: json['nom'] ?? json['name'] as String? ?? 'Plat',
-        description: json['description'] as String? ??
-            'Savourez ce délicieux plat préparé avec des ingrédients frais.',
-        imageUrl: json['image_url'] as String? ??
-            'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&auto=format&fit=crop',
-        price: (json['prix'] ?? json['price'] as num?)?.toDouble() ?? 0.0,
-        category: json['category'] as String? ?? 'Plat principal',
-        rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
-        isAvailable: json['is_available'] as bool? ?? true,
-        isPopular: json['is_popular'] as bool? ?? false,
-        isVegetarian: json['is_vegetarian'] as bool? ?? false,
-        ingredients: List<String>.from(json['ingredients'] ?? []),
-        prepTimeMin: json['prep_time_min'] as int? ?? 15,
-      );
+  factory MealModel.fromJson(Map<String, dynamic> json) {
+    // Build image URL from the 'img' filename field returned by the real API
+    // e.g. "171234234_pizza.jpg" → full CDN path on the server
+    final imgFilename = json['img'] as String?;
+    String imageUrl;
+    if (imgFilename != null && imgFilename.isNotEmpty) {
+      imageUrl = 'https://sahladelivery.com/les_plats/uploads/$imgFilename';
+    } else {
+      imageUrl = json['image_url'] as String? ??
+          'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&auto=format&fit=crop';
+    }
+
+    // 'actif' is 1/0 integer in the real API; fallback to bool for local data
+    final actifRaw = json['actif'];
+    bool isAvailable;
+    if (actifRaw is int) {
+      isAvailable = actifRaw == 1;
+    } else if (actifRaw is bool) {
+      isAvailable = actifRaw;
+    } else {
+      isAvailable = json['is_available'] as bool? ?? true;
+    }
+
+    return MealModel(
+      id: (json['idplats'] ?? json['id'])?.toString() ?? '',
+      restaurantId:
+          (json['id_resto'] ?? json['restaurant_id'])?.toString() ?? '',
+      name: json['nom'] as String? ?? json['name'] as String? ?? 'Plat',
+      description: json['description'] as String? ??
+          'Savourez ce délicieux plat préparé avec des ingrédients frais.',
+      imageUrl: imageUrl,
+      price: (json['prix'] ?? json['price'] as num?)?.toDouble() ?? 0.0,
+      category: json['category'] as String? ?? 'Plat principal',
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+      isAvailable: isAvailable,
+      isPopular: json['is_popular'] as bool? ?? false,
+      isVegetarian: json['is_vegetarian'] as bool? ?? false,
+      ingredients: List<String>.from(json['ingredients'] ?? []),
+      prepTimeMin: json['prep_time_min'] as int? ?? 15,
+    );
+  }
 }
 
 // ── Dummy Data ────────────────────────────────────────────────────────────────

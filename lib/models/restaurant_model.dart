@@ -33,26 +33,34 @@ class RestaurantModel {
     this.email,
   });
 
-  factory RestaurantModel.fromJson(Map<String, dynamic> json) =>
-      RestaurantModel(
-        id: json['id']?.toString() ?? '',
-        name: json['nom'] ?? json['name'] as String? ?? 'Restaurant',
-        description: json['description'] as String? ??
-            'Découvrez nos délicieux plats préparés avec passion.',
-        imageUrl: json['image_url'] as String? ??
-            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop',
-        cuisineType: json['cuisine_type'] as String? ?? 'Algérienne',
-        rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
-        reviewsCount: json['reviews_count'] as int? ?? 0,
-        deliveryTimeMin: json['delivery_time_min'] as int? ?? 30,
-        deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 100.0,
-        minOrder: (json['min_order'] as num?)?.toDouble() ?? 500.0,
-        isOpen: json['is_open'] as bool? ?? true,
-        isFeatured: json['is_featured'] as bool? ?? false,
-        tags: List<String>.from(json['tags'] ?? []),
-        tel: json['tel']?.toString(),
-        email: json['email']?.toString(),
-      );
+  factory RestaurantModel.fromJson(Map<String, dynamic> json) {
+    // Try multiple common ID field names used by PHP APIs
+    final id = (json['id'] ??
+                json['idresto'] ??
+                json['id_resto'] ??
+                json['restaurantId'])
+            ?.toString() ??
+        '';
+    return RestaurantModel(
+      id: id,
+      name: json['nom'] ?? json['name'] as String? ?? 'Restaurant',
+      description: json['description'] as String? ??
+          'Découvrez nos délicieux plats préparés avec passion.',
+      imageUrl: json['image_url'] as String? ??
+          'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop',
+      cuisineType: json['cuisine_type'] as String? ?? 'Algérienne',
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+      reviewsCount: json['reviews_count'] as int? ?? 0,
+      deliveryTimeMin: json['delivery_time_min'] as int? ?? 30,
+      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 100.0,
+      minOrder: (json['min_order'] as num?)?.toDouble() ?? 500.0,
+      isOpen: json['is_open'] as bool? ?? true,
+      isFeatured: json['is_featured'] as bool? ?? false,
+      tags: List<String>.from(json['tags'] ?? []),
+      tel: json['tel']?.toString(),
+      email: json['email']?.toString(),
+    );
+  }
 }
 
 // ── Dummy Data ────────────────────────────────────────────────────────────────

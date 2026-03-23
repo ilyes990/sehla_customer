@@ -7,6 +7,7 @@ import '../../core/app_constants.dart';
 import '../../core/app_text_styles.dart';
 import '../../core/design_system.dart';
 import '../../view_models/auth_view_model.dart';
+import '../../view_models/customer_notification_view_model.dart';
 import '../../view_models/home_view_model.dart';
 import '../home/meal_detail_view.dart';
 import '../home/restaurant_detail_view.dart';
@@ -29,6 +30,14 @@ class _HomeViewState extends State<HomeView> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeViewModel>().loadHomeData();
+      // Start badge polling for the notification bell
+      final authVm = context.read<AuthViewModel>();
+      final customerId = int.tryParse(authVm.user?.id ?? '') ?? 0;
+      if (customerId > 0) {
+        context
+            .read<CustomerNotificationViewModel>()
+            .refreshBadge(customerId);
+      }
     });
   }
 
@@ -250,33 +259,46 @@ class _HomeTab extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusM),
-                  ),
-                  child: Stack(
-                    children: [
-                      const Center(
-                        child: Icon(Icons.notifications_outlined,
-                            color: AppColors.primary, size: 22),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                          ),
+                // Bell icon with badge
+                Consumer<CustomerNotificationViewModel>(
+                  builder: (ctx, notifVm, _) {
+                    final unread = notifVm.unreadCount;
+                    return GestureDetector(
+                      onTap: () => Navigator.pushNamed(
+                          context,
+                          AppConstants.routeCustomerNotifications),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySurface,
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusM),
+                        ),
+                        child: Stack(
+                          children: [
+                            const Center(
+                              child: Icon(Icons.notifications_outlined,
+                                  color: AppColors.primary, size: 22),
+                            ),
+                            if (unread > 0)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.error,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ],
             ),

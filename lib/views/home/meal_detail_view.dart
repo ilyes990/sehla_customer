@@ -10,9 +10,9 @@ import '../../core/design_system.dart';
 import '../../models/meal_model.dart';
 import '../../models/restaurant_model.dart';
 import '../../services/restaurant_service.dart';
-import '../../view_models/auth_view_model.dart';
+import '../../view_models/cart_view_model.dart';
 import '../../view_models/order_view_model.dart';
-import 'order_confirmation_view.dart';
+import 'cart_view.dart';
 
 class MealDetailView extends StatefulWidget {
   final MealModel meal;
@@ -46,26 +46,48 @@ class _MealDetailViewState extends State<MealDetailView> {
     } catch (_) {}
   }
 
-  Future<void> _onCreateOrder() async {
+  /// French locale price: "1 200 DZD"
+  static String _formatPrice(double prix) {
+    final str = prix.toInt().toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('\u202f');
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} DZD';
+  }
+
+  void _addToCart() {
     final vm = context.read<OrderViewModel>();
-    final authVm = context.read<AuthViewModel>();
+    final cartVm = context.read<CartViewModel>();
     final restaurant = _restaurant;
 
-    final success = await vm.createOrder(
-      restaurantId: widget.meal.restaurantId,
-      restaurantName: restaurant?.name ?? 'Restaurant',
-      deliveryAddress: authVm.user?.location ?? 'Adresse non définie',
-      deliveryFee: restaurant?.deliveryFee ?? 150,
-    );
-
-    if (success && mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderConfirmationView(order: vm.lastOrder!),
+    for (int i = 0; i < vm.quantity; i++) {
+      cartVm.addItem(
+        widget.meal,
+        restaurant ?? RestaurantModel(
+          id: widget.meal.restaurantId,
+          name: 'Restaurant',
+          description: '',
+          imageUrl: '',
+          cuisineType: '',
+          rating: 0,
+          reviewsCount: 0,
+          deliveryTimeMin: 30,
+          deliveryFee: 0,
+          minOrder: 0,
+          isOpen: true,
+          isFeatured: false,
         ),
       );
     }
+
+    // Navigate to cart
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CartView()),
+    );
   }
 
   @override
@@ -330,11 +352,11 @@ class _MealDetailViewState extends State<MealDetailView> {
               Expanded(
                 child: CustomButton(
                   label: widget.meal.isAvailable
-                      ? 'Commander · ${vm.totalPrice.toInt()} DA'
+                      ? 'Ajouter · ${_formatPrice(vm.totalPrice)}'
                       : 'Indisponible',
-                  isLoading: vm.isLoading,
-                  onPressed: (widget.meal.isAvailable && !vm.isLoading)
-                      ? _onCreateOrder
+                  isLoading: false,
+                  onPressed: (widget.meal.isAvailable)
+                      ? _addToCart
                       : null,
                 ),
               ),

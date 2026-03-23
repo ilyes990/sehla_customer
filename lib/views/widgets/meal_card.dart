@@ -165,6 +165,17 @@ class MealCard extends StatelessWidget {
     );
   }
 
+  /// French locale price: "1 200 DZD"
+  static String _formatPrice(double prix) {
+    final str = prix.toInt().toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('\u202f');
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} DZD';
+  }
+
   Widget _buildInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +200,7 @@ class MealCard extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                '${meal.price.toInt()} DA',
+                _formatPrice(meal.price),
                 style: AppTextStyles.price.copyWith(fontSize: 13),
                 overflow: TextOverflow.ellipsis,
               ),

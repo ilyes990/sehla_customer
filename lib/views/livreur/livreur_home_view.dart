@@ -7,6 +7,7 @@ import '../../../core/app_constants.dart';
 import '../../../core/app_text_styles.dart';
 import '../../../models/livreur_model.dart';
 import '../../../view_models/auth_view_model.dart';
+import '../../../view_models/livreur_notification_view_model.dart';
 
 class LivreurHomeView extends StatefulWidget {
   const LivreurHomeView({super.key});
@@ -24,6 +25,20 @@ class _LivreurHomeViewState extends State<LivreurHomeView> {
     _NavItem(icon: Icons.bar_chart_rounded, label: 'Gains'),
     _NavItem(icon: Icons.person_rounded, label: 'Profil'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authVm = context.read<AuthViewModel>();
+      final livreurId = int.tryParse(authVm.livreur?.id ?? '') ?? 0;
+      if (livreurId > 0) {
+        context
+            .read<LivreurNotificationViewModel>()
+            .refreshBadge(livreurId);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,25 +214,50 @@ class _LivreurDashboardTab extends StatelessWidget {
             ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
           ],
         ),
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(AppConstants.radiusM),
-            boxShadow: AppColors.primaryShadow,
-          ),
-          child: const Icon(
-            Icons.delivery_dining_rounded,
-            color: AppColors.white,
-            size: 26,
-          ),
-        ).animate().fadeIn(delay: 200.ms, duration: 400.ms).scale(
-              begin: const Offset(0.8, 0.8),
-              end: const Offset(1, 1),
-              delay: 200.ms,
-              duration: 400.ms,
-            ),
+        // Bell icon with badge
+        Consumer2<AuthViewModel, LivreurNotificationViewModel>(
+          builder: (ctx, authVm, notifVm, _) {
+            final unread = notifVm.unreadCount;
+            return GestureDetector(
+              onTap: () => Navigator.pushNamed(
+                  ctx, AppConstants.routeLivreurNotifications),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius:
+                      BorderRadius.circular(AppConstants.radiusM),
+                  boxShadow: AppColors.cardShadow,
+                ),
+                child: Stack(
+                  children: [
+                    const Center(
+                      child: Icon(
+                        Icons.notifications_outlined,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    if (unread > 0)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const BoxDecoration(
+                            color: AppColors.error,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
       ],
     );
   }

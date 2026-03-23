@@ -15,6 +15,19 @@ class AppConstants {
   static const String routeRestaurantDetail = '/restaurant-detail';
   static const String routeMealDetail = '/meal-detail';
   static const String routeOrderConfirmation = '/order-confirmation';
+  static const String routeCart = '/cart';
+  static const String routeOrderSuccess = '/order-success';
+
+  // Routes — Notifications
+  static const String routeCustomerNotifications =
+      '/customer/notifications';
+  static const String routeLivreurNotifications =
+      '/livreur/notifications';
+
+  // Routes — Plats
+  static const String routePlatsList = '/plats';
+  static const String routePlatCreate = '/plats/create';
+  static const String routePlatEdit = '/plats/edit';
 
   // Routes — Livreur
   static const String routeLivreurHome = '/livreur/home';

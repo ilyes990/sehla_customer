@@ -25,6 +25,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   final RestaurantService _restaurantService = RestaurantService();
   List<MealModel> _meals = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -33,7 +34,10 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   }
 
   Future<void> _loadMeals() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final meals =
           await _restaurantService.getMealsByRestaurant(widget.restaurant.id);
@@ -45,9 +49,21 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Impossible de charger le menu. Réessayez.';
+        });
       }
     }
+  }
+
+  /// Group meals by their category, preserving insertion order
+  Map<String, List<MealModel>> get _mealsByCategory {
+    final map = <String, List<MealModel>>{};
+    for (final meal in _meals) {
+      map.putIfAbsent(meal.category, () => []).add(meal);
+    }
+    return map;
   }
 
   @override
@@ -213,6 +229,30 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
   }
 
   Widget _buildMealsSection(BuildContext context) {
+    if (_isLoading) {
+      return _buildLoadingShimmer();
+    }
+
+    if (_errorMessage != null) {
+      return _buildError();
+    }
+
+    if (_meals.isEmpty) {
+      return _buildEmpty();
+    }
+
+    // ── Categorized menu ──────────────────────────────────────────────────────
+    final categories = _mealsByCategory;
+    final categoryWidgets = <Widget>[];
+    int globalIndex = 0;
+
+    for (final entry in categories.entries) {
+      final startIdx = globalIndex;
+      categoryWidgets.add(
+          _buildCategorySection(context, entry.key, entry.value, startIdx));
+      globalIndex += entry.value.length;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,54 +261,193 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
               const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
           child: Text('Notre menu', style: AppTextStyles.headlineMedium),
         ),
-        const SizedBox(height: 12),
-        if (_isLoading)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(AppConstants.paddingXL),
-              child: CircularProgressIndicator(),
-            ),
-          )
-        else if (_meals.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppConstants.paddingXL),
-              child: Text('Aucun plat disponible',
-                  style: AppTextStyles.bodyMedium),
-            ),
-          )
-        else
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-            child: Column(
-              children: _meals.asMap().entries.map((entry) {
-                final i = entry.key;
-                final m = entry.value;
-                return MealCard(
-                  meal: m,
-                  horizontal: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => MealDetailView(meal: m)),
-                  ),
-                )
-                    .animate()
-                    .fadeIn(
-                      delay: Duration(milliseconds: i * 80),
-                      duration: 400.ms,
-                    )
-                    .slideY(
-                      begin: 0.1,
-                      end: 0,
-                      delay: Duration(milliseconds: i * 80),
-                      duration: 400.ms,
-                      curve: Curves.easeOut,
-                    );
-              }).toList(),
+        const SizedBox(height: 4),
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
+          child: Text(
+            '${_meals.length} plat${_meals.length > 1 ? 's' : ''} disponible${_meals.length > 1 ? 's' : ''}',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...categoryWidgets,
+      ],
+    );
+  }
+
+  Widget _buildCategorySection(
+    BuildContext context,
+    String category,
+    List<MealModel> meals,
+    int startIndex,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Category header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppConstants.paddingL, 8, AppConstants.paddingL, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                category,
+                style: AppTextStyles.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius:
+                      BorderRadius.circular(AppConstants.radiusCircle),
+                ),
+                child: Text(
+                  '${meals.length}',
+                  style: AppTextStyles.labelSmall
+                      .copyWith(color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(
+            delay: Duration(milliseconds: startIndex * 60), duration: 400.ms),
+
+        // Meals in this category
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
+          child: Column(
+            children: meals.asMap().entries.map((e) {
+              final i = e.key;
+              final m = e.value;
+              final delay = (startIndex + i) * 60;
+              return MealCard(
+                meal: m,
+                horizontal: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => MealDetailView(meal: m)),
+                ),
+              )
+                  .animate()
+                  .fadeIn(
+                    delay: Duration(milliseconds: delay),
+                    duration: 400.ms,
+                  )
+                  .slideY(
+                    begin: 0.1,
+                    end: 0,
+                    delay: Duration(milliseconds: delay),
+                    duration: 400.ms,
+                    curve: Curves.easeOut,
+                  );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Divider(height: 1, indent: 24, endIndent: 24),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
+          child: ShimmerBox(width: 120, height: 22, radius: 8),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
+          child: Column(
+            children: List.generate(
+              4,
+              (_) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: const ShimmerBox(
+                    width: double.infinity, height: 100, radius: 16),
+              ),
             ),
           ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingXL),
+        child: Column(
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.restaurant_menu_rounded,
+                  size: 40, color: AppColors.primary),
+            ),
+            const SizedBox(height: 16),
+            Text('Aucun plat disponible', style: AppTextStyles.headlineMedium),
+            const SizedBox(height: 8),
+            Text(
+              'Ce restaurant n\'a pas encore de plats listés.',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingXL),
+        child: Column(
+          children: [
+            const Icon(Icons.wifi_off_rounded,
+                color: AppColors.textHint, size: 56),
+            const SizedBox(height: 12),
+            Text('Erreur de chargement', style: AppTextStyles.headlineMedium),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? '',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            CustomButton(
+              label: 'Réessayer',
+              variant: ButtonVariant.outline,
+              width: 160,
+              onPressed: _loadMeals,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
