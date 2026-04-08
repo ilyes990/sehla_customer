@@ -100,7 +100,8 @@ class RestaurantCard extends StatelessWidget {
       child: Stack(
         children: [
           CachedNetworkImage(
-            imageUrl: restaurant.imageUrl,
+            imageUrl:
+                "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
             width: width,
             height: height,
             fit: BoxFit.cover,
@@ -116,27 +117,6 @@ class RestaurantCard extends StatelessWidget {
               child: const Icon(Icons.restaurant, color: AppColors.textHint),
             ),
           ),
-          // Closed overlay
-          if (!restaurant.isOpen)
-            Container(
-              width: width,
-              height: height,
-              color: Colors.black54,
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusCircle),
-                  ),
-                  child: Text('Fermé',
-                      style: AppTextStyles.labelMedium
-                          .copyWith(color: AppColors.error)),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -157,30 +137,17 @@ class RestaurantCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            RatingBadge(rating: restaurant.rating),
           ],
         ),
         const SizedBox(height: 3),
         Text(
-          restaurant.cuisineType,
+          restaurant.tel ?? '',
           style: AppTextStyles.bodySmall
               .copyWith(color: AppColors.primary, fontWeight: FontWeight.w500),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            _buildMeta(
-                Icons.timer_outlined, '${restaurant.deliveryTimeMin} min'),
-            _buildMeta(Icons.delivery_dining_outlined,
-                '${restaurant.deliveryFee.toInt()} DA'),
-            _buildMeta(
-                Icons.people_outline_rounded, '${restaurant.reviewsCount}'),
-          ],
-        ),
       ],
     );
   }

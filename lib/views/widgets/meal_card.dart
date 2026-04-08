@@ -25,7 +25,7 @@ class MealCard extends StatelessWidget {
 
   Widget _buildVertical() {
     return GestureDetector(
-      onTap: meal.isAvailable ? onTap : null,
+      onTap: meal.actif ? onTap : null,
       child: Container(
         width: 170,
         decoration: BoxDecoration(
@@ -51,7 +51,7 @@ class MealCard extends StatelessWidget {
 
   Widget _buildHorizontal() {
     return GestureDetector(
-      onTap: meal.isAvailable ? onTap : null,
+      onTap: meal.actif ? onTap : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
@@ -79,7 +79,7 @@ class MealCard extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: meal.isAvailable
+                      color: meal.actif
                           ? AppColors.primaryLight
                           : AppColors.surfaceVariant,
                       borderRadius: BorderRadius.circular(AppConstants.radiusS),
@@ -87,7 +87,7 @@ class MealCard extends StatelessWidget {
                     child: Icon(
                       Icons.add_rounded,
                       size: 18,
-                      color: meal.isAvailable
+                      color: meal.actif
                           ? AppColors.primaryDark
                           : AppColors.textHint,
                     ),
@@ -127,21 +127,7 @@ class MealCard extends StatelessWidget {
             ),
           ),
         ),
-        if (meal.isVegetarian)
-          Positioned(
-            top: 8,
-            left: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
-              ),
-              child:
-                  const Icon(Icons.eco_rounded, color: Colors.white, size: 12),
-            ),
-          ),
-        if (!meal.isAvailable)
+        if (!meal.actif)
           ClipRRect(
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(borderRadius),
@@ -182,31 +168,16 @@ class MealCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          meal.name,
+          meal.nom,
           style: AppTextStyles.headlineSmall.copyWith(fontSize: 13),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 2),
-        Text(
-          meal.category,
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
         const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                _formatPrice(meal.price),
-                style: AppTextStyles.price.copyWith(fontSize: 13),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            RatingBadge(rating: meal.rating, small: true),
-          ],
+        Text(
+          _formatPrice(meal.prix),
+          style: AppTextStyles.price.copyWith(fontSize: 13),
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );

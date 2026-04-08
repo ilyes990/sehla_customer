@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'base_api_service.dart';
 
 /// Represents a request dish item for the createCommande API.
@@ -58,16 +56,9 @@ class CommandeResult {
   }
 }
 
-class CommandeService {
-  static const String _endpoint =
-      'https://sahladelivery.com/commande/api_creat_commande.php';
-
+class CommandeService extends BaseApiService {
   /// Creates a new order.
-  ///
-  /// Returns [CommandeResult] on 201 success.
-  ///
-  /// Throws [ApiException] with the exact API message on 400,
-  /// and a generic message on 500 / network error.
+  /// POST /commande/api_creat_commande.php
   Future<CommandeResult> createCommande({
     required int customerId,
     required String customerNom,
@@ -97,60 +88,51 @@ class CommandeService {
       'les_plats': lesPlats.map((p) => p.toJson()).toList(),
     };
 
-    http.Response response;
     try {
-      response = await http.post(
-        Uri.parse(_endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(body),
+      final decoded = await post('commande/api_creat_commande.php', body: body);
+
+      if (decoded != null) {
+        final success = decoded['success'];
+        if (success == true || success == 'true' || success == 1) {
+          return CommandeResult.fromJson(decoded);
+        }
+      }
+
+      throw ApiException(
+        message: decoded?['message'] as String? ?? 'Une erreur est survenue',
       );
+    } on ApiException {
+      rethrow;
     } catch (_) {
       throw const ApiException(
           message: 'Erreur réseau : impossible de joindre le serveur');
     }
+  }
 
-    final Map<String, dynamic> decoded;
+  /// Updates the status of an order.
+  /// PUT /commande/api_update_commande_status.php
+  /// Allowed statuses: en_attente, prepare, termine, livree
+  Future<bool> updateCommandeStatus({
+    required int commandeId,
+    required String status,
+  }) async {
     try {
-      decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (_) {
-      throw ApiException(
-        message: 'Réponse invalide du serveur',
-        statusCode: response.statusCode,
-      );
-    }
+      final body = {
+        'commande_id': commandeId,
+        'status': status,
+      };
 
-    // ── 400 Bad Request ───────────────────────────────────────────────────────
-    if (response.statusCode == 400) {
-      throw ApiException(
-        message: decoded['message'] as String? ?? 'Champ manquant ou invalide',
-        statusCode: 400,
-      );
-    }
+      final decoded =
+          await put('commande/api_update_commande_status.php', body: body);
 
-    // ── 500 Server Error ──────────────────────────────────────────────────────
-    if (response.statusCode == 500) {
-      throw ApiException(
-        message: 'Erreur serveur, veuillez réessayer',
-        statusCode: 500,
-      );
-    }
-
-    // ── 201 Success ───────────────────────────────────────────────────────────
-    if (response.statusCode == 201) {
-      final success = decoded['success'];
-      if (success == true || success == 'true' || success == 1) {
-        return CommandeResult.fromJson(decoded);
+      if (decoded != null) {
+        final success = decoded['success'];
+        return success == true || success == 'true' || success == 1;
       }
+      return false;
+    } catch (e) {
+      print('[updateCommandeStatus] ERROR: $e');
+      return false;
     }
-
-    // ── Fallback ──────────────────────────────────────────────────────────────
-    throw ApiException(
-      message:
-          decoded['message'] as String? ?? 'Une erreur inattendue est survenue',
-      statusCode: response.statusCode,
-    );
   }
 }

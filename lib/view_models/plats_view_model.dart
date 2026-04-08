@@ -40,21 +40,27 @@ class PlatsViewModel extends ChangeNotifier {
   // READ
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<void> loadPlats({int? idResto}) async {
+  Future<void> loadPlats({String? idResto}) async {
+    print('DEBUG: [PlatsViewModel] loadPlats called for idResto: $idResto');
     _loadState = PlatsLoadState.loading;
     _loadError = null;
     notifyListeners();
     try {
       if (idResto != null) {
+        print('DEBUG: [PlatsViewModel] Fetching by restaurant...');
         _plats = await _service.getPlatsByRestaurant(idResto);
       } else {
+        print('DEBUG: [PlatsViewModel] Fetching all plats...');
         _plats = await _service.getAllPlats();
       }
+      print('DEBUG: [PlatsViewModel] Success! Found ${_plats.length} plats.');
       _loadState = PlatsLoadState.success;
     } on ApiException catch (e) {
+      print('DEBUG: [PlatsViewModel] API Error: ${e.message}');
       _loadError = e.message;
       _loadState = PlatsLoadState.error;
-    } catch (_) {
+    } catch (e) {
+      print('DEBUG: [PlatsViewModel] Unexpected error: $e');
       _loadError = 'Impossible de charger les plats';
       _loadState = PlatsLoadState.error;
     }
@@ -68,7 +74,7 @@ class PlatsViewModel extends ChangeNotifier {
   Future<bool> createPlat({
     required String nom,
     required double prix,
-    required int idResto,
+    required String idResto,
     File? imgFile,
   }) async {
     _mutationState = PlatsMutationState.submitting;
@@ -105,7 +111,7 @@ class PlatsViewModel extends ChangeNotifier {
     required int id,
     required String nom,
     required double prix,
-    required int idResto,
+    required String idResto,
     File? imgFile,
   }) async {
     _mutationState = PlatsMutationState.submitting;
@@ -137,7 +143,7 @@ class PlatsViewModel extends ChangeNotifier {
   // DELETE (soft)
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<bool> deletePlat(int id, {int? idResto}) async {
+  Future<bool> deletePlat(int id, {String? idResto}) async {
     _mutationState = PlatsMutationState.submitting;
     _mutationError = null;
     _mutationSuccess = null;
@@ -149,6 +155,8 @@ class PlatsViewModel extends ChangeNotifier {
       _mutationState = PlatsMutationState.success;
       _mutationSuccess = 'Plat supprimé';
       notifyListeners();
+      // Refresh list if we have the restaurant context
+      await loadPlats(idResto: idResto);
       return true;
     } on ApiException catch (e) {
       _mutationError = e.message;

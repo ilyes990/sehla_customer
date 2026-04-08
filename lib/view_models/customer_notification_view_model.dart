@@ -28,34 +28,42 @@ class CustomerNotificationViewModel extends ChangeNotifier {
   bool get isLoading => _state == NotificationLoadState.loading;
   bool get hasError => _state == NotificationLoadState.error;
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Fetch (initial / manual retry — shows loading state) ───────────────────
   Future<void> fetchNotifications(int customerId) async {
     _state = NotificationLoadState.loading;
     _errorMessage = null;
     notifyListeners();
+    await _silentRefresh(customerId);
+  }
 
+  // ── Silent background poll — no loading-state flip ─────────────────────────
+  Future<void> _silentRefresh(int customerId) async {
     try {
       _notifications = await _service.fetchNotifications(customerId);
       _state = NotificationLoadState.success;
     } on ApiException catch (e) {
-      _errorMessage = e.message;
-      _state = NotificationLoadState.error;
+      if (_notifications.isEmpty) {
+        _errorMessage = e.message;
+        _state = NotificationLoadState.error;
+      }
     } catch (_) {
-      _errorMessage = 'Impossible de charger les notifications';
-      _state = NotificationLoadState.error;
+      if (_notifications.isEmpty) {
+        _errorMessage = 'Impossible de charger les notifications';
+        _state = NotificationLoadState.error;
+      }
     }
     notifyListeners();
   }
 
   // ── Polling ────────────────────────────────────────────────────────────────
-  /// Starts polling every 30 seconds using [customerId].
-  /// Also triggers an immediate fetch.
+  /// Starts polling every 5 seconds using [customerId].
+  /// First call shows loading indicator; subsequent polls are silent.
   void startPolling(int customerId) {
     stopPolling();
-    fetchNotifications(customerId);
+    fetchNotifications(customerId); // first call shows loading indicator
     _pollingTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => fetchNotifications(customerId),
+      const Duration(seconds: 5),
+      (_) => _silentRefresh(customerId), // subsequent polls are silent
     );
   }
 
@@ -65,14 +73,7 @@ class CustomerNotificationViewModel extends ChangeNotifier {
   }
 
   // ── Lightweight badge refresh (no loading state change) ───────────────────
-  Future<void> refreshBadge(int customerId) async {
-    try {
-      _notifications = await _service.fetchNotifications(customerId);
-      notifyListeners();
-    } catch (_) {
-      // Silently ignore badge errors — don't show error state for background polling
-    }
-  }
+  Future<void> refreshBadge(int customerId) => _silentRefresh(customerId);
 
   @override
   void dispose() {

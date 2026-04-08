@@ -17,7 +17,7 @@ import '../../../view_models/plats_view_model.dart';
 /// - Pass [idResto] to pre-fill the restaurant context (required for create).
 class PlatFormView extends StatefulWidget {
   final MealModel? plat;
-  final int? idResto;
+  final String? idResto;
 
   const PlatFormView({super.key, this.plat, this.idResto});
 
@@ -39,10 +39,10 @@ class _PlatFormViewState extends State<PlatFormView> {
   @override
   void initState() {
     super.initState();
-    _nomCtrl = TextEditingController(text: widget.plat?.name ?? '');
+    _nomCtrl = TextEditingController(text: widget.plat?.nom ?? '');
     _prixCtrl = TextEditingController(
         text: widget.plat != null
-            ? widget.plat!.price.toInt().toString()
+            ? widget.plat!.prix.toInt().toString()
             : '');
     _vm = PlatsViewModel();
   }
@@ -55,12 +55,12 @@ class _PlatFormViewState extends State<PlatFormView> {
     super.dispose();
   }
 
-  int get _resolvedIdResto {
+  String get _resolvedIdResto {
     if (widget.idResto != null) return widget.idResto!;
     if (widget.plat != null) {
-      return int.tryParse(widget.plat!.restaurantId) ?? 0;
+      return widget.plat!.idResto;
     }
-    return 0;
+    return '';
   }
 
   // ── Image Picker (no plugin — uses file path input for demo) ─────────────
@@ -92,7 +92,7 @@ class _PlatFormViewState extends State<PlatFormView> {
     final prix = double.tryParse(_prixCtrl.text.trim()) ?? 0;
     final idResto = _resolvedIdResto;
 
-    if (idResto == 0) {
+    if (idResto.isEmpty) {
       _showSnack('Restaurant non défini', isError: true);
       return;
     }
@@ -169,7 +169,7 @@ class _PlatFormViewState extends State<PlatFormView> {
 
     final id = int.tryParse(widget.plat!.id) ?? 0;
     final success = await _vm.deletePlat(id,
-        idResto: int.tryParse(widget.plat!.restaurantId));
+        idResto: widget.plat!.idResto);
 
     if (!mounted) return;
     if (success) {

@@ -26,18 +26,13 @@ class _CustomerNotificationsScreenState
       final authVm = context.read<AuthViewModel>();
       final customerId = int.tryParse(authVm.user?.id ?? '') ?? 0;
       if (customerId > 0) {
-        context
-            .read<CustomerNotificationViewModel>()
-            .startPolling(customerId);
+        context.read<CustomerNotificationViewModel>().startPolling(customerId);
       }
     });
   }
 
   @override
   void dispose() {
-    // Stop polling when user leaves the screen
-    // (ViewModel itself will also clean up on dispose, but we stop early here
-    //  so the timer doesn't keep running in the background needlessly)
     context.read<CustomerNotificationViewModel>().stopPolling();
     super.dispose();
   }
@@ -58,6 +53,7 @@ class _CustomerNotificationsScreenState
     );
   }
 
+  // ── App Bar ──────────────────────────────────────────────────────────────────
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: AppColors.white,
@@ -76,6 +72,7 @@ class _CustomerNotificationsScreenState
     );
   }
 
+  // ── Loading ─────────────────────────────────────────────────────────────────
   Widget _buildLoading() {
     return const Center(
       child: CircularProgressIndicator(
@@ -85,6 +82,7 @@ class _CustomerNotificationsScreenState
     );
   }
 
+  // ── Empty ───────────────────────────────────────────────────────────────────
   Widget _buildEmpty() {
     return Center(
       child: Column(
@@ -109,6 +107,7 @@ class _CustomerNotificationsScreenState
     );
   }
 
+  // ── Error ───────────────────────────────────────────────────────────────────
   Widget _buildError(CustomerNotificationViewModel vm) {
     return Center(
       child: Padding(
@@ -125,13 +124,25 @@ class _CustomerNotificationsScreenState
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            _RetryButton(
+            ElevatedButton.icon(
               onPressed: () {
                 final authVm = context.read<AuthViewModel>();
-                final customerId =
-                    int.tryParse(authVm.user?.id ?? '') ?? 0;
+                final customerId = int.tryParse(authVm.user?.id ?? '') ?? 0;
                 vm.fetchNotifications(customerId);
               },
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Réessayer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppConstants.radiusCircle),
+                ),
+              ),
             ),
           ],
         ),
@@ -139,11 +150,11 @@ class _CustomerNotificationsScreenState
     );
   }
 
+  // ── List ────────────────────────────────────────────────────────────────────
   Widget _buildList(List<NotificationModel> notifications) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.paddingM,
-          vertical: AppConstants.paddingM),
+          horizontal: AppConstants.paddingM, vertical: AppConstants.paddingM),
       itemCount: notifications.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
@@ -165,7 +176,9 @@ class _CustomerNotificationsScreenState
   }
 }
 
-// ─── Notification Card ─────────────────────────────────────────────────────────
+// ─── Notification Card ──────────────────────────────────────────────────────────
+// API response shape: { "id": 5, "message": "...", "created_at": "2026-02-26 14:30:00" }
+// Simple card: bell icon + message (bold) + French-formatted date
 class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
   const _NotificationCard({required this.notification});
@@ -189,7 +202,7 @@ class _NotificationCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Bell icon
+          // ── Bell icon ──
           Container(
             width: 40,
             height: 40,
@@ -201,50 +214,28 @@ class _NotificationCard extends StatelessWidget {
                 color: AppColors.primary, size: 20),
           ),
           const SizedBox(width: 12),
-          // Message + timestamp
+          // ── Message + date ──
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Message text (bold, primary color)
                 Text(
                   notification.message,
-                  style: AppTextStyles.labelLarge,
+                  style: AppTextStyles.labelLarge
+                      .copyWith(color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
+                // created_at (small, hint color, French locale)
                 Text(
-                  notification.formattedDate,
-                  style: AppTextStyles.bodySmall,
+                  notification.createdAt.toString(),
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textHint),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Retry Button ──────────────────────────────────────────────────────────────
-class _RetryButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _RetryButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.refresh_rounded, size: 18),
-      label: const Text('Réessayer'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-        elevation: 0,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(AppConstants.radiusCircle),
-        ),
       ),
     );
   }

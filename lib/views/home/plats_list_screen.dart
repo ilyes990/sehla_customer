@@ -15,7 +15,7 @@ import 'meal_detail_view.dart';
 /// in a 2-column grid. Called "Nos Plats".
 class PlatsListScreen extends StatefulWidget {
   /// The restaurant id to filter by. Pass null to show all plats.
-  final int? idResto;
+  final String? idResto;
 
   /// Optional restaurant name for the app bar subtitle.
   final String? restaurantName;
@@ -219,7 +219,7 @@ class _PlatGridCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: plat.isAvailable ? onTap : null,
+      onTap: plat.actif ? onTap : null,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
@@ -251,7 +251,7 @@ class _PlatGridCard extends StatelessWidget {
                           color: AppColors.textHint, size: 36),
                     ),
                   ),
-                  if (!plat.isAvailable)
+                  if (!plat.actif)
                     Container(
                       width: double.infinity,
                       height: 130,
@@ -273,7 +273,7 @@ class _PlatGridCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      plat.name,
+                      plat.nom,
                       style: AppTextStyles.headlineSmall
                           .copyWith(fontSize: 13),
                       maxLines: 2,
@@ -281,7 +281,7 @@ class _PlatGridCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      _formatPrice(plat.price),
+                      _formatPrice(plat.prix),
                       style: AppTextStyles.price
                           .copyWith(fontSize: 13, color: AppColors.primary),
                     ),
@@ -290,7 +290,7 @@ class _PlatGridCard extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       height: 34,
-                      child: plat.isAvailable
+                      child: plat.actif
                           ? Container(
                               decoration: BoxDecoration(
                                 gradient: AppColors.primaryGradient,

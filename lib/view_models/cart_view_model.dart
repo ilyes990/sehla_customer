@@ -22,7 +22,7 @@ class CartItem {
     this.note = '',
   });
 
-  double get totalPrice => meal.price * quantity;
+  double get totalPrice => meal.prix * quantity;
 
   CartItem copyWith({int? quantity, String? note}) => CartItem(
         meal: meal,
@@ -142,9 +142,9 @@ class CartViewModel extends ChangeNotifier {
     final plats = _items
         .map((item) => CommandePlatItem(
               id: int.tryParse(item.meal.id) ?? 0,
-              nom: item.meal.name,
+              nom: item.meal.nom,
               quantite: item.quantity,
-              prix: item.meal.price,
+              prix: item.meal.prix,
               note: item.note,
             ))
         .toList();
@@ -158,7 +158,7 @@ class CartViewModel extends ChangeNotifier {
         restoId: int.tryParse(restaurant.id) ?? 0,
         restoNom: restaurant.name,
         restoTel: restaurant.tel ?? '',
-        restoAdresse: restaurant.description, // using description as address fallback
+        restoAdresse: restaurant.email ?? '',
         prixCommandeTotale: totalPrice,
         lesPlats: plats,
       );

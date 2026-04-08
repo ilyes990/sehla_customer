@@ -29,7 +29,7 @@ class OrderViewModel extends ChangeNotifier {
   MealModel? get currentMeal => _currentMeal;
   int get quantity => _quantity;
 
-  double get totalPrice => (_currentMeal?.price ?? 0) * _quantity;
+  double get totalPrice => (_currentMeal?.prix ?? 0) * _quantity;
 
   // ── Meal Detail ───────────────────────────────────────────────────────────
   void setCurrentMeal(MealModel meal) {
@@ -74,10 +74,10 @@ class OrderViewModel extends ChangeNotifier {
         items: [
           OrderItemModel(
             mealId: _currentMeal!.id,
-            mealName: _currentMeal!.name,
+            mealName: _currentMeal!.nom,
             mealImageUrl: _currentMeal!.imageUrl,
             quantity: _quantity,
-            unitPrice: _currentMeal!.price,
+            unitPrice: _currentMeal!.prix,
           ),
         ],
         deliveryAddress: deliveryAddress,

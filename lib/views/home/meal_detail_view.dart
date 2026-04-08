@@ -37,9 +37,9 @@ class _MealDetailViewState extends State<MealDetailView> {
   }
 
   Future<void> _loadRestaurant() async {
-    final restaurants = await _restaurantService.getRestaurants();
+    final restaurants = await _restaurantService.getAllRestaurants();
     try {
-      final r = restaurants.firstWhere((r) => r.id == widget.meal.restaurantId);
+      final r = restaurants.firstWhere((r) => r.id == widget.meal.idResto);
       if (mounted) {
         setState(() => _restaurant = r);
       }
@@ -65,20 +65,13 @@ class _MealDetailViewState extends State<MealDetailView> {
     for (int i = 0; i < vm.quantity; i++) {
       cartVm.addItem(
         widget.meal,
-        restaurant ?? RestaurantModel(
-          id: widget.meal.restaurantId,
-          name: 'Restaurant',
-          description: '',
-          imageUrl: '',
-          cuisineType: '',
-          rating: 0,
-          reviewsCount: 0,
-          deliveryTimeMin: 30,
-          deliveryFee: 0,
-          minOrder: 0,
-          isOpen: true,
-          isFeatured: false,
-        ),
+        restaurant ??
+            RestaurantModel(
+              id: widget.meal.idResto,
+              name: 'Restaurant',
+              tel: '',
+              email: '',
+            ),
       );
     }
 
@@ -169,96 +162,18 @@ class _MealDetailViewState extends State<MealDetailView> {
           ),
           const SizedBox(height: 20),
 
-          // Name + Rating
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child:
-                    Text(widget.meal.name, style: AppTextStyles.headlineLarge)
-                        .animate()
-                        .fadeIn(duration: 400.ms),
-              ),
-              RatingBadge(rating: widget.meal.rating),
-            ],
-          ),
+          // Name
+          Text(widget.meal.nom, style: AppTextStyles.headlineLarge)
+              .animate()
+              .fadeIn(duration: 400.ms),
           const SizedBox(height: 8),
 
-          // Category + Badges
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusCircle),
-                ),
-                child: Text(
-                  widget.meal.category,
-                  style: AppTextStyles.labelSmall
-                      .copyWith(color: AppColors.primaryDark),
-                ),
-              ),
-              if (widget.meal.isVegetarian) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.radiusCircle),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.eco_rounded,
-                          size: 12, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text('Végétarien',
-                          style: AppTextStyles.labelSmall
-                              .copyWith(color: AppColors.primary)),
-                    ],
-                  ),
-                ),
-              ],
-              const Spacer(),
-              Row(
-                children: [
-                  const Icon(Icons.timer_outlined,
-                      size: 13, color: AppColors.textHint),
-                  const SizedBox(width: 4),
-                  Text('${widget.meal.prepTimeMin} min',
-                      style: AppTextStyles.labelSmall),
-                ],
-              ),
-            ],
+          // Price
+          Text(
+            _formatPrice(widget.meal.prix),
+            style: AppTextStyles.price,
           ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
           const SizedBox(height: 16),
-
-          // Description
-          Text(widget.meal.description, style: AppTextStyles.bodyMedium)
-              .animate()
-              .fadeIn(delay: 150.ms, duration: 400.ms),
-          const SizedBox(height: 20),
-
-          // Ingredients
-          if (widget.meal.ingredients.isNotEmpty) ...[
-            Text('Ingrédients', style: AppTextStyles.headlineSmall)
-                .animate()
-                .fadeIn(delay: 200.ms, duration: 400.ms),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: widget.meal.ingredients
-                  .map((ing) => TagChip(label: ing))
-                  .toList(),
-            ).animate().fadeIn(delay: 250.ms, duration: 400.ms),
-            const SizedBox(height: 20),
-          ],
 
           // Restaurant Info
           if (_restaurant != null) ...[
@@ -275,7 +190,8 @@ class _MealDetailViewState extends State<MealDetailView> {
                     height: 40,
                     decoration: BoxDecoration(
                       color: AppColors.primarySurface,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusS),
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusS),
                     ),
                     child: const Icon(Icons.storefront_outlined,
                         color: AppColors.primary, size: 20),
@@ -287,7 +203,7 @@ class _MealDetailViewState extends State<MealDetailView> {
                       children: [
                         Text(_restaurant!.name,
                             style: AppTextStyles.labelLarge),
-                        Text(_restaurant!.cuisineType,
+                        Text(_restaurant!.tel ?? '',
                             style: AppTextStyles.bodySmall),
                       ],
                     ),
@@ -296,7 +212,7 @@ class _MealDetailViewState extends State<MealDetailView> {
                       size: 14, color: AppColors.textHint),
                 ],
               ),
-            ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
+            ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
           ],
           const SizedBox(height: 16),
         ],
@@ -351,13 +267,11 @@ class _MealDetailViewState extends State<MealDetailView> {
               // Order button
               Expanded(
                 child: CustomButton(
-                  label: widget.meal.isAvailable
+                  label: widget.meal.actif
                       ? 'Ajouter · ${_formatPrice(vm.totalPrice)}'
                       : 'Indisponible',
                   isLoading: false,
-                  onPressed: (widget.meal.isAvailable)
-                      ? _addToCart
-                      : null,
+                  onPressed: widget.meal.actif ? _addToCart : null,
                 ),
               ),
             ],

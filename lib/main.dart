@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/app_constants.dart';
 import 'core/app_theme.dart';
+import 'locator.dart';
 import 'view_models/auth_view_model.dart';
 import 'view_models/customer_notification_view_model.dart';
 import 'view_models/home_view_model.dart';
@@ -11,6 +12,7 @@ import 'view_models/livreur_notification_view_model.dart';
 import 'view_models/cart_view_model.dart';
 import 'view_models/order_view_model.dart';
 import 'view_models/plats_view_model.dart';
+import 'view_models/restaurant_view_model.dart';
 import 'views/admin/plat_form_view.dart';
 import 'views/auth/login_view.dart';
 import 'views/auth/register_view.dart';
@@ -35,6 +37,7 @@ void main() {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  setupLocator();
   runApp(const SehlaApp());
 }
 
@@ -52,6 +55,7 @@ class SehlaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CustomerNotificationViewModel()),
         ChangeNotifierProvider(create: (_) => LivreurNotificationViewModel()),
         ChangeNotifierProvider(create: (_) => PlatsViewModel()),
+        ChangeNotifierProvider(create: (_) => RestaurantViewModel()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -84,7 +88,7 @@ class SehlaApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (_) => PlatFormView(
                 plat: args?['plat'],
-                idResto: args?['idResto'] as int?,
+                idResto: args?['idResto'] as String?,
               ),
             );
           }
@@ -92,7 +96,7 @@ class SehlaApp extends StatelessWidget {
             final args = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
               builder: (_) => PlatsListScreen(
-                idResto: args?['idResto'] as int?,
+                idResto: args?['idResto'] as String?,
                 restaurantName: args?['restaurantName'] as String?,
               ),
             );

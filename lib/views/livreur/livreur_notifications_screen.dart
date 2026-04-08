@@ -28,71 +28,10 @@ class _LivreurNotificationsScreenState
       if (livreurId > 0) {
         context
             .read<LivreurNotificationViewModel>()
-            .startPolling(livreurId);
+            .fetchNotifications(livreurId);
       }
     });
   }
-
-  @override
-  void dispose() {
-    context.read<LivreurNotificationViewModel>().stopPolling();
-    super.dispose();
-  }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────────
-
-  void _showToast(String message, {Color? color}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message,
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
-        backgroundColor: color ?? AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.radiusM)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  Future<void> _onTakeOrder(NotificationModel notif) async {
-    final authVm = context.read<AuthViewModel>();
-    final vm = context.read<LivreurNotificationViewModel>();
-    final livreurId = int.tryParse(authVm.livreur?.id ?? '') ?? 0;
-
-    final result = await vm.takeOrder(
-      notifId: notif.id,
-      livreurId: livreurId,
-    );
-
-    switch (result) {
-      case TakeOrderResult.success:
-        _showToast(
-          'Commande réservée avec succès ✓',
-          color: AppColors.primary,
-        );
-        break;
-      case TakeOrderResult.conflict409:
-        _showToast(
-          'Cette commande vient d\'être prise par un autre livreur',
-          color: AppColors.warning,
-        );
-        break;
-      case TakeOrderResult.notFound404:
-        _showToast('Commande introuvable', color: AppColors.error);
-        break;
-      case TakeOrderResult.badRequest400:
-      case TakeOrderResult.error:
-        _showToast('Une erreur est survenue, réessayez',
-            color: AppColors.error);
-        break;
-    }
-  }
-
-  // ── Build ─────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -104,12 +43,13 @@ class _LivreurNotificationsScreenState
           if (vm.isLoading) return _buildLoading();
           if (vm.hasError) return _buildError(vm);
           if (vm.notifications.isEmpty) return _buildEmpty();
-          return _buildList(vm);
+          return _buildList(vm.notifications);
         },
       ),
     );
   }
 
+  // ── App Bar ──────────────────────────────────────────────────────────────────
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: AppColors.white,
@@ -128,6 +68,7 @@ class _LivreurNotificationsScreenState
     );
   }
 
+  // ── Loading ─────────────────────────────────────────────────────────────────
   Widget _buildLoading() {
     return const Center(
       child: CircularProgressIndicator(
@@ -137,12 +78,13 @@ class _LivreurNotificationsScreenState
     );
   }
 
+  // ── Empty ───────────────────────────────────────────────────────────────────
   Widget _buildEmpty() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.notifications_off_outlined,
             size: 72,
             color: AppColors.textHint,
@@ -161,6 +103,7 @@ class _LivreurNotificationsScreenState
     );
   }
 
+  // ── Error ───────────────────────────────────────────────────────────────────
   Widget _buildError(LivreurNotificationViewModel vm) {
     return Center(
       child: Padding(
@@ -172,18 +115,30 @@ class _LivreurNotificationsScreenState
                 color: AppColors.error, size: 64),
             const SizedBox(height: 16),
             Text(
-              'Impossible de charger les notifications',
+              vm.errorMessage ?? 'Impossible de charger les notifications',
               style: AppTextStyles.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            _RetryButton(
+            ElevatedButton.icon(
               onPressed: () {
                 final authVm = context.read<AuthViewModel>();
-                final livreurId =
-                    int.tryParse(authVm.livreur?.id ?? '') ?? 0;
+                final livreurId = int.tryParse(authVm.livreur?.id ?? '') ?? 0;
                 vm.fetchNotifications(livreurId);
               },
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Réessayer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppConstants.radiusCircle),
+                ),
+              ),
             ),
           ],
         ),
@@ -191,20 +146,15 @@ class _LivreurNotificationsScreenState
     );
   }
 
-  Widget _buildList(LivreurNotificationViewModel vm) {
+  // ── List ────────────────────────────────────────────────────────────────────
+  Widget _buildList(List<NotificationModel> notifications) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.paddingM,
-          vertical: AppConstants.paddingM),
-      itemCount: vm.notifications.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+          horizontal: AppConstants.paddingM, vertical: AppConstants.paddingM),
+      itemCount: notifications.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
-        final notif = vm.notifications[i];
-        return _OrderNotifCard(
-          notification: notif,
-          isTaking: vm.isTakingOrder(notif.id),
-          onTakeOrder: () => _onTakeOrder(notif),
-        )
+        return _NotificationCard(notification: notifications[i])
             .animate()
             .fadeIn(
               delay: Duration(milliseconds: i * 60),
@@ -222,316 +172,191 @@ class _LivreurNotificationsScreenState
   }
 }
 
-// ─── Order Notification Card ───────────────────────────────────────────────────
-class _OrderNotifCard extends StatelessWidget {
+// ─── Notification Card ──────────────────────────────────────────────────────────
+// Same clean simple style as the customer side.
+class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
-  final bool isTaking;
-  final VoidCallback onTakeOrder;
-
-  const _OrderNotifCard({
-    required this.notification,
-    required this.isTaking,
-    required this.onTakeOrder,
-  });
+  const _NotificationCard({required this.notification});
 
   @override
   Widget build(BuildContext context) {
-    final isLibre = notification.isLibre;
-    final isReserved = notification.isReserved;
+    final vm = context.read<LivreurNotificationViewModel>();
+    final authVm = context.read<AuthViewModel>();
+    final livreurId = int.tryParse(authVm.livreur?.id ?? '') ?? 0;
 
-    // Decide if this is a rich order notification or a simple message notification
-    final isOrderNotif = notification.restoNom != null ||
-        notification.lesPlats.isNotEmpty ||
-        notification.status != null;
-
-    if (!isOrderNotif) {
-      // Fallback: simple message card (backward-compatible)
-      return _SimpleNotifCard(notification: notification);
-    }
+    final isReserved =
+        notification.status == 'reserved' || notification.status == 'acceptée';
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        border: Border.all(
-          color: isLibre
-              ? AppColors.primaryLight
-              : isReserved
-                  ? AppColors.accentLight
-                  : AppColors.border,
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: AppColors.cardShadow,
+        border: isReserved
+            ? Border.all(color: AppColors.primary, width: 1.5)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─ Header row: restaurant name + status badge
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  notification.restoNom ?? 'Restaurant',
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color:
+                      isReserved ? AppColors.primary : AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                ),
+                child: Icon(
+                  isReserved
+                      ? Icons.local_shipping_rounded
+                      : Icons.notifications_rounded,
+                  color: isReserved ? AppColors.white : AppColors.primary,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 8),
-              _StatusBadge(status: notification.status),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.message.isNotEmpty
+                          ? notification.message
+                          : (isReserved
+                              ? 'Commande en cours'
+                              : 'Nouvelle commande'),
+                      style: AppTextStyles.headlineSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      notification.createdAt.toString(),
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textHint),
+                    ),
+                  ],
+                ),
+              ),
+              if (isReserved)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'RESERVÉ',
+                    style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primary, fontWeight: FontWeight.bold),
+                  ),
+                ),
             ],
           ),
 
-          const SizedBox(height: 10),
-
-          // ─ Plats list
-          if (notification.lesPlats.isNotEmpty) ...[
-            ...notification.lesPlats.map((plat) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.circle,
-                          size: 6, color: AppColors.textSecondary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${plat.nom} x${plat.quantite}',
-                          style: AppTextStyles.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-            const SizedBox(height: 10),
-          ] else if (notification.message.isNotEmpty) ...[
-            Text(notification.message, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 10),
-          ],
-
-          // ─ Date
-          Text(
-            notification.formattedDate,
-            style: AppTextStyles.bodySmall,
-          ),
-
-          // ─ Action button (only for "libre" status)
-          if (isLibre) ...[
-            const SizedBox(height: 14),
-            _TakeOrderButton(
-              isTaking: isTaking,
-              onPressed: isTaking ? null : onTakeOrder,
-            ),
-          ] else if (isReserved) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.accentLight,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radiusCircle),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.check_circle_outline_rounded,
-                      color: AppColors.accent, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Commande réservée ✓',
-                    style: AppTextStyles.labelMedium.copyWith(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Simple fallback notification card (no status / order info) ───────────────
-class _SimpleNotifCard extends StatelessWidget {
-  final NotificationModel notification;
-  const _SimpleNotifCard({required this.notification});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.primarySurface,
-        borderRadius: BorderRadius.circular(AppConstants.radiusL),
-        border: Border.all(color: AppColors.primaryLight, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(AppConstants.radiusM),
-            ),
-            child: const Icon(Icons.notifications_rounded,
-                color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (isReserved && notification.restoNom != null) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                Text(notification.message, style: AppTextStyles.labelLarge),
-                const SizedBox(height: 4),
-                Text(notification.formattedDate,
-                    style: AppTextStyles.bodySmall),
+                const Icon(Icons.restaurant_rounded,
+                    size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 8),
+                Text(notification.restoNom!, style: AppTextStyles.labelLarge),
               ],
             ),
+            if (notification.lesplats != null &&
+                notification.lesplats!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ...notification.lesplats!.map((p) => Padding(
+                    padding: const EdgeInsets.only(left: 24, bottom: 4),
+                    child: Text('• ${p.quantite}x ${p.nom}',
+                        style: AppTextStyles.bodySmall),
+                  )),
+            ],
+          ],
+
+          const SizedBox(height: 16),
+
+          // Action Buttons
+          SizedBox(
+            width: double.infinity,
+            child: isReserved
+                ? ElevatedButton.icon(
+                    onPressed: vm.isLoading
+                        ? null
+                        : () async {
+                            final success = await vm.markAsDelivered(
+                                notification.idCommande!, notification.id);
+                            if (success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Commande marquée comme livrée !')),
+                              );
+                              // Refresh to update list
+                              vm.fetchNotifications(livreurId);
+                            }
+                          },
+                    icon: vm.isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check_circle_outline_rounded,
+                            size: 20),
+                    label: Text(vm.isLoading
+                        ? 'Traitement...'
+                        : 'Marquer comme Livrée'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusM)),
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: vm.isLoading
+                        ? null
+                        : () async {
+                            final success =
+                                await vm.takeOrder(notification.id, livreurId);
+                            if (success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Vous avez pris la commande !')),
+                              );
+                            }
+                          },
+                    icon: vm.isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.shopping_bag_outlined, size: 20),
+                    label: Text(
+                        vm.isLoading ? 'Traitement...' : 'Prendre la commande'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusM)),
+                    ),
+                  ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-class _StatusBadge extends StatelessWidget {
-  final String? status;
-  const _StatusBadge({this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    String label;
-
-    switch (status) {
-      case 'libre':
-        bg = AppColors.primary;
-        fg = Colors.white;
-        label = 'Disponible';
-        break;
-      case 'reserved':
-        bg = AppColors.accent;
-        fg = Colors.white;
-        label = 'Réservée';
-        break;
-      default:
-        bg = AppColors.border;
-        fg = AppColors.textSecondary;
-        label = 'Non disponible';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Take Order Button ────────────────────────────────────────────────────────
-class _TakeOrderButton extends StatelessWidget {
-  final bool isTaking;
-  final VoidCallback? onPressed;
-
-  const _TakeOrderButton({required this.isTaking, this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: onPressed != null
-              ? AppColors.primaryGradient
-              : const LinearGradient(
-                  colors: [Color(0xFFCCCCCC), Color(0xFFAAAAAA)]),
-          borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
-          boxShadow: onPressed != null ? AppColors.primaryShadow : [],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
-            child: Center(
-              child: isTaking
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      'Prendre la commande',
-                      style: AppTextStyles.labelLarge.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Retry Button ─────────────────────────────────────────────────────────────
-class _RetryButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _RetryButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.refresh_rounded, size: 18),
-      label: const Text('Réessayer'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radiusCircle),
-        ),
       ),
     );
   }

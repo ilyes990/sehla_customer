@@ -6,13 +6,12 @@ import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
 import '../../core/app_text_styles.dart';
 import '../../core/design_system.dart';
+import '../../core/enums_view_state.dart';
 import '../../view_models/auth_view_model.dart';
 import '../../view_models/customer_notification_view_model.dart';
 import '../../view_models/home_view_model.dart';
-import '../home/meal_detail_view.dart';
+import '../base_view.dart';
 import '../home/restaurant_detail_view.dart';
-import '../widgets/meal_card.dart';
-import '../widgets/restaurant_card.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -23,44 +22,27 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   int _currentBottomIndex = 0;
-  final _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeViewModel>().loadHomeData();
-      // Start badge polling for the notification bell
-      final authVm = context.read<AuthViewModel>();
-      final customerId = int.tryParse(authVm.user?.id ?? '') ?? 0;
-      if (customerId > 0) {
-        context
-            .read<CustomerNotificationViewModel>()
-            .refreshBadge(customerId);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentBottomIndex,
-        children: const [
-          _HomeTab(),
-          _ExploreTab(),
-          _OrdersTab(),
-          _ProfileTab(),
-        ],
-      ),
-      bottomNavigationBar: _buildBottomNav(),
+    return BaseView<HomeViewModel>(
+      onModelReady: (model) {
+        model.loadHomeData();
+      },
+      builder: (context, model, child) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: IndexedStack(
+            index: _currentBottomIndex,
+            children: const [
+              _HomeTab(),
+              _OrdersTab(),
+              _ProfileTab(),
+            ],
+          ),
+          bottomNavigationBar: _buildBottomNav(),
+        );
+      },
     );
   }
 
@@ -90,26 +72,19 @@ class _HomeViewState extends State<HomeView> {
                   currentIndex: _currentBottomIndex,
                   onTap: () => setState(() => _currentBottomIndex = 0)),
               _NavItem(
-                  icon: Icons.explore_outlined,
-                  activeIcon: Icons.explore_rounded,
-                  label: 'Explorer',
+                  icon: Icons.receipt_long_outlined,
+                  activeIcon: Icons.receipt_long_rounded,
+                  label: 'Commandes',
                   index: 1,
                   currentIndex: _currentBottomIndex,
                   onTap: () => setState(() => _currentBottomIndex = 1)),
               _NavItem(
-                  icon: Icons.receipt_long_outlined,
-                  activeIcon: Icons.receipt_long_rounded,
-                  label: 'Commandes',
-                  index: 2,
-                  currentIndex: _currentBottomIndex,
-                  onTap: () => setState(() => _currentBottomIndex = 2)),
-              _NavItem(
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   label: 'Profil',
-                  index: 3,
+                  index: 2,
                   currentIndex: _currentBottomIndex,
-                  onTap: () => setState(() => _currentBottomIndex = 3)),
+                  onTap: () => setState(() => _currentBottomIndex = 2)),
             ],
           ),
         ),
@@ -180,34 +155,13 @@ class _HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<HomeViewModel, AuthViewModel>(
-      builder: (context, homeVm, authVm, _) {
+    return Consumer<HomeViewModel>(
+      builder: (context, vm, _) {
         return CustomScrollView(
           slivers: [
-            _buildAppBar(context, authVm),
+            _buildAppBar(context),
             SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  _buildSearchBar(context, homeVm),
-                  const SizedBox(height: 8),
-                  _buildCategoryFilter(homeVm),
-                  const SizedBox(height: 20),
-                  if (homeVm.isLoading) ...[
-                    _buildShimmerFeatured(),
-                    const SizedBox(height: 20),
-                    _buildShimmerList(),
-                  ] else if (homeVm.loadingState == HomeLoadingState.error) ...[
-                    _buildError(context, homeVm),
-                  ] else ...[
-                    _buildFeaturedSection(context, homeVm),
-                    const SizedBox(height: 24),
-                    _buildPopularMealsSection(context, homeVm),
-                    const SizedBox(height: 24),
-                    _buildAllRestaurantsSection(context, homeVm),
-                    const SizedBox(height: 80),
-                  ],
-                ],
-              ),
+              child: _buildBody(context, vm),
             ),
           ],
         );
@@ -215,7 +169,7 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, AuthViewModel authVm) {
+  Widget _buildAppBar(BuildContext context) {
     return SliverAppBar(
       floating: true,
       snap: true,
@@ -249,12 +203,16 @@ class _HomeTab extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 1),
-                      Text(
-                        authVm.user?.location?.split(',').first ??
-                            'Alger Centre',
-                        style: AppTextStyles.headlineSmall,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                      Consumer<AuthViewModel>(
+                        builder: (context, authVm, _) {
+                          return Text(
+                            authVm.user?.location?.split(',').first ??
+                                'Alger Centre',
+                            style: AppTextStyles.headlineSmall,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -265,8 +223,7 @@ class _HomeTab extends StatelessWidget {
                     final unread = notifVm.unreadCount;
                     return GestureDetector(
                       onTap: () => Navigator.pushNamed(
-                          context,
-                          AppConstants.routeCustomerNotifications),
+                          context, AppConstants.routeCustomerNotifications),
                       child: Container(
                         width: 40,
                         height: 40,
@@ -308,341 +265,203 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchBar(BuildContext context, HomeViewModel vm) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.paddingL, vertical: 8),
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(AppConstants.radiusM),
-            border: Border.all(color: AppColors.border),
+  Widget _buildBody(BuildContext context, HomeViewModel vm) {
+    // Loading state
+    if (vm.state == ViewState.Busy) {
+      return Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingL),
+        child: Column(
+          children: List.generate(
+            4,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: const ShimmerBox(
+                  width: double.infinity, height: 90, radius: 16),
+            ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
+        ),
+      );
+    }
+
+    // Error state
+    if (vm.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.paddingXL),
+          child: Column(
             children: [
-              const Icon(Icons.search_rounded,
-                  color: AppColors.textHint, size: 20),
-              const SizedBox(width: 10),
-              Text('Rechercher restaurants, plats...',
-                  style: AppTextStyles.inputHint),
+              const SizedBox(height: 60),
+              const Icon(Icons.wifi_off_rounded,
+                  color: AppColors.textHint, size: 60),
+              const SizedBox(height: 12),
+              Text('Impossible de charger',
+                  style: AppTextStyles.headlineMedium),
+              const SizedBox(height: 8),
+              Text(vm.errorMessage!, style: AppTextStyles.bodyMedium),
+              const SizedBox(height: 20),
+              CustomButton(
+                label: 'Réessayer',
+                variant: ButtonVariant.outline,
+                width: 160,
+                onPressed: () => vm.loadHomeData(),
+              ),
             ],
           ),
         ),
-      ),
-    ).animate().fadeIn(duration: 400.ms);
+      );
+    }
+
+    // Empty state
+    if (vm.restaurants.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.paddingXL),
+          child: Column(
+            children: [
+              const SizedBox(height: 60),
+              const Icon(Icons.restaurant_outlined,
+                  color: AppColors.textHint, size: 60),
+              const SizedBox(height: 12),
+              Text('Aucun restaurant', style: AppTextStyles.headlineMedium),
+              const SizedBox(height: 8),
+              Text('Aucun restaurant disponible pour le moment.',
+                  style: AppTextStyles.bodyMedium),
+              const SizedBox(height: 20),
+              CustomButton(
+                label: 'Réessayer',
+                variant: ButtonVariant.outline,
+                width: 160,
+                onPressed: () => vm.loadHomeData(),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Success — display restaurant list
+    return _buildRestaurantsList(context, vm);
   }
 
-  Widget _buildCategoryFilter(HomeViewModel vm) {
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-        itemCount: vm.categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final cat = vm.categories[i];
-          return TagChip(
-            label: cat,
-            selected: vm.selectedCategory == cat,
-            onTap: () => vm.selectCategory(cat),
-          )
-              .animate()
-              .fadeIn(delay: Duration(milliseconds: i * 50), duration: 300.ms);
-        },
-      ),
-    );
-  }
-
-  Widget _buildFeaturedSection(BuildContext context, HomeViewModel vm) {
-    if (vm.featuredRestaurants.isEmpty) return const SizedBox.shrink();
+  Widget _buildRestaurantsList(BuildContext context, HomeViewModel vm) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding:
               const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-          child: SectionHeader(title: '🔥 À la une'),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 210,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-            itemCount: vm.featuredRestaurants.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (context, i) {
-              final r = vm.featuredRestaurants[i];
-              return RestaurantCard(
-                restaurant: r,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RestaurantDetailView(restaurant: r),
-                  ),
-                ),
-              )
-                  .animate()
-                  .fadeIn(
-                    delay: Duration(milliseconds: i * 100),
-                    duration: 400.ms,
-                  )
-                  .slideX(
-                    begin: 0.2,
-                    end: 0,
-                    delay: Duration(milliseconds: i * 100),
-                    duration: 400.ms,
-                    curve: Curves.easeOut,
-                  );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPopularMealsSection(BuildContext context, HomeViewModel vm) {
-    if (vm.popularMeals.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-          child: SectionHeader(
-            title: '⭐ Plats populaires',
-            actionLabel: 'Voir tout',
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 200,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-            itemCount: vm.popularMeals.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final m = vm.popularMeals[i];
-              return MealCard(
-                meal: m,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MealDetailView(meal: m),
-                  ),
-                ),
-              ).animate().fadeIn(
-                    delay: Duration(milliseconds: i * 80),
-                    duration: 400.ms,
-                  );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAllRestaurantsSection(BuildContext context, HomeViewModel vm) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-          child: SectionHeader(title: '🍽️ Tous les Restos'),
+          child: SectionHeader(title: '🍽️ Restaurants'),
         ),
         const SizedBox(height: 12),
         Padding(
           padding:
               const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
           child: Column(
-            children: vm.filteredRestaurants.asMap().entries.map((entry) {
+            children: vm.restaurants.asMap().entries.map((entry) {
               final i = entry.key;
               final r = entry.value;
-              return RestaurantCard(
-                restaurant: r,
-                horizontal: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RestaurantDetailView(restaurant: r),
-                  ),
-                ),
-              ).animate().fadeIn(
+              return _RestaurantTile(restaurant: r)
+                  .animate()
+                  .fadeIn(
                     delay: Duration(milliseconds: i * 80),
                     duration: 400.ms,
                   );
             }).toList(),
           ),
         ),
+        const SizedBox(height: 80),
       ],
     );
   }
+}
 
-  Widget _buildError(BuildContext context, HomeViewModel vm) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingXL),
-        child: Column(
+// ─── Restaurant Tile (simple, matches API fields) ─────────────────────────────
+class _RestaurantTile extends StatelessWidget {
+  final dynamic restaurant;
+  const _RestaurantTile({required this.restaurant});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RestaurantDetailView(restaurant: restaurant),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppConstants.radiusL),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Row(
           children: [
-            const Icon(Icons.wifi_off_rounded,
-                color: AppColors.textHint, size: 60),
-            const SizedBox(height: 12),
-            Text('Impossible de charger', style: AppTextStyles.headlineMedium),
-            const SizedBox(height: 8),
-            Text(vm.errorMessage ?? '', style: AppTextStyles.bodyMedium),
-            const SizedBox(height: 20),
-            CustomButton(
-              label: 'Réessayer',
-              variant: ButtonVariant.outline,
-              width: 160,
-              onPressed: () => vm.loadHomeData(),
+            // Restaurant icon
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppConstants.radiusM),
+              ),
+              child: const Icon(Icons.restaurant_rounded,
+                  color: AppColors.primary, size: 24),
             ),
+            const SizedBox(width: 14),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    restaurant.name,
+                    style: AppTextStyles.headlineSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  if (restaurant.tel != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.phone_outlined,
+                            size: 14, color: AppColors.textHint),
+                        const SizedBox(width: 4),
+                        Text(
+                          restaurant.tel!,
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ],
+                    ),
+                  if (restaurant.email != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.email_outlined,
+                            size: 14, color: AppColors.textHint),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            restaurant.email!,
+                            style: AppTextStyles.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: AppColors.textHint),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildShimmerFeatured() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-          child: ShimmerBox(width: 140, height: 22, radius: 8),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 210,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-            itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (_, __) =>
-                const ShimmerBox(width: 240, height: 210, radius: 16),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildShimmerList() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-      child: Column(
-        children: List.generate(
-          3,
-          (_) => Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: const ShimmerBox(
-                width: double.infinity, height: 110, radius: 16),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Explore Tab ──────────────────────────────────────────────────────────────
-class _ExploreTab extends StatelessWidget {
-  const _ExploreTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Explorer'), centerTitle: false),
-      body: Consumer<HomeViewModel>(
-        builder: (context, vm, _) {
-          return Padding(
-            padding: const EdgeInsets.all(AppConstants.paddingL),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 8),
-                Text('Catégories', style: AppTextStyles.headlineLarge),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    childAspectRatio: 1.4,
-                    children: vm.categories
-                        .where((c) => c != 'Tous')
-                        .map((c) => _CategoryGridItem(category: c))
-                        .toList(),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CategoryGridItem extends StatelessWidget {
-  final String category;
-  const _CategoryGridItem({required this.category});
-
-  static const Map<String, IconData> _icons = {
-    'Algérienne': Icons.restaurant_menu_rounded,
-    'Italienne': Icons.local_pizza_outlined,
-    'Fast Food': Icons.fastfood_rounded,
-    'Japonaise': Icons.set_meal_rounded,
-    'Mexicaine': Icons.lunch_dining_rounded,
-    'Healthy': Icons.eco_rounded,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<HomeViewModel>(builder: (context, vm, _) {
-      final isSelected = vm.selectedCategory == category;
-      return GestureDetector(
-        onTap: () {
-          vm.selectCategory(category);
-        },
-        child: AnimatedContainer(
-          duration: AppConstants.animFast,
-          decoration: BoxDecoration(
-            gradient: isSelected ? AppColors.primaryGradient : null,
-            color: isSelected ? null : AppColors.white,
-            borderRadius: BorderRadius.circular(AppConstants.radiusL),
-            boxShadow:
-                isSelected ? AppColors.primaryShadow : AppColors.cardShadow,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _icons[category] ?? Icons.restaurant,
-                size: 32,
-                color: isSelected ? Colors.white : AppColors.primary,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                category,
-                style: AppTextStyles.labelLarge.copyWith(
-                    color: isSelected ? Colors.white : AppColors.textPrimary),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
   }
 }
 

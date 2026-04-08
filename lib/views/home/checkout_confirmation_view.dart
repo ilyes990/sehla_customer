@@ -67,13 +67,14 @@ class _CheckoutConfirmationViewState extends State<CheckoutConfirmationView> {
         MaterialPageRoute(
           builder: (_) => OrderSuccessView(orderId: cartVm.lastOrderId ?? 0),
         ),
-        (route) => route.settings.name == AppConstants.routeHome ||
-            route.isFirst,
+        (route) =>
+            route.settings.name == AppConstants.routeHome || route.isFirst,
       );
     } else {
       final msg = cartVm.errorMessage ?? '';
       if (msg.contains('serveur') || msg.isEmpty) {
-        _showToast('Erreur serveur, veuillez réessayer', color: AppColors.error);
+        _showToast('Erreur serveur, veuillez réessayer',
+            color: AppColors.error);
       } else {
         _showToast(msg, color: AppColors.error);
       }
@@ -117,7 +118,7 @@ class _CheckoutConfirmationViewState extends State<CheckoutConfirmationView> {
                         _SectionCard(
                           icon: Icons.storefront_outlined,
                           title: restaurant.name,
-                          subtitle: restaurant.description,
+                          subtitle: restaurant.tel ?? '',
                         ).animate().fadeIn(duration: 350.ms),
 
                       const SizedBox(height: 12),
@@ -133,9 +134,7 @@ class _CheckoutConfirmationViewState extends State<CheckoutConfirmationView> {
                           icon: Icons.location_on_outlined,
                           title: 'Adresse de livraison',
                           subtitle: user.location ?? 'Non définie',
-                        )
-                            .animate()
-                            .fadeIn(delay: 200.ms, duration: 350.ms),
+                        ).animate().fadeIn(delay: 200.ms, duration: 350.ms),
 
                       const SizedBox(height: 12),
 
@@ -197,8 +196,7 @@ class _CheckoutConfirmationViewState extends State<CheckoutConfirmationView> {
             final item = entry.value;
             return Column(
               children: [
-                if (i > 0)
-                  const Divider(height: 1, indent: 16, endIndent: 16),
+                if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -209,15 +207,15 @@ class _CheckoutConfirmationViewState extends State<CheckoutConfirmationView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${item.meal.name} × ${item.quantity}',
+                              '${item.meal.nom} × ${item.quantity}',
                               style: AppTextStyles.labelMedium,
                             ),
                             if (item.note.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
                                 'Note: ${item.note}',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                    fontStyle: FontStyle.italic),
+                                style: AppTextStyles.bodySmall
+                                    .copyWith(fontStyle: FontStyle.italic),
                               ),
                             ],
                           ],

@@ -32,7 +32,7 @@ class PlatsService {
       final decoded = _decodeList(response.body);
       return decoded
           .map((j) => MealModel.fromJson(j as Map<String, dynamic>))
-          .where((m) => m.isAvailable) // actif == 1
+          .where((m) => m.actif) // actif == 1
           .toList();
     } on ApiException {
       rethrow;
@@ -64,22 +64,26 @@ class PlatsService {
   }
 
   /// GET all active plats for a given restaurant [idResto].
-  Future<List<MealModel>> getPlatsByRestaurant(int idResto) async {
-    final uri = Uri.parse('$_baseEndpoint?id_resto=$idResto');
-    try {
-      final response = await http.get(uri, headers: _jsonHeaders);
-      _checkStatus(response);
-      final decoded = _decodeList(response.body);
-      return decoded
-          .map((j) => MealModel.fromJson(j as Map<String, dynamic>))
-          .where((m) => m.isAvailable)
-          .toList();
-    } on ApiException {
-      rethrow;
-    } catch (e) {
-      throw ApiException(
-          message: 'Erreur réseau : impossible de joindre le serveur');
+  Future<dynamic> getPlatsByRestaurant(String idResto) async {
+    final response = await http.get(
+      Uri.parse('$_baseEndpoint?id_resto=$idResto'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load plats (${response.statusCode})');
     }
+
+    dynamic decoded = jsonDecode(response.body);
+    // Handle double-encoding if the response body is a string wrapping a list
+    if (decoded is String) {
+      decoded = jsonDecode(decoded);
+    }
+
+    if (decoded is! List) return [];
+
+    return decoded
+        .map((json) => MealModel.fromJson(Map<String, dynamic>.from(json)))
+        .toList();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -92,7 +96,7 @@ class PlatsService {
   Future<int> createPlat({
     required String nom,
     required double prix,
-    required int idResto,
+    required String idResto,
     File? imgFile,
   }) async {
     final uri = Uri.parse(_baseEndpoint);
@@ -100,10 +104,11 @@ class PlatsService {
       final request = http.MultipartRequest('POST', uri);
       request.fields['nom'] = nom.trim();
       request.fields['prix'] = prix.toString();
-      request.fields['id_resto'] = idResto.toString();
+      request.fields['id_resto'] = idResto;
 
       if (imgFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('img', imgFile.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('img', imgFile.path));
       }
 
       final streamed = await request.send();
@@ -135,7 +140,7 @@ class PlatsService {
     required int id,
     required String nom,
     required double prix,
-    required int idResto,
+    required String idResto,
     File? imgFile,
   }) async {
     final uri = Uri.parse('$_baseEndpoint?id=$id&_method=PUT');
@@ -143,11 +148,12 @@ class PlatsService {
       final request = http.MultipartRequest('POST', uri);
       request.fields['nom'] = nom.trim();
       request.fields['prix'] = prix.toString();
-      request.fields['id_resto'] = idResto.toString();
+      request.fields['id_resto'] = idResto;
       request.fields['_method'] = 'PUT';
 
       if (imgFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('img', imgFile.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('img', imgFile.path));
       }
 
       final streamed = await request.send();

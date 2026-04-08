@@ -258,7 +258,7 @@ class _CartItemCardState extends State<_CartItemCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.item.meal.name,
+                        widget.item.meal.nom,
                         style: AppTextStyles.labelLarge,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -266,7 +266,7 @@ class _CartItemCardState extends State<_CartItemCard> {
                       const SizedBox(height: 4),
                       Text(
                         CartView.formatPrice(
-                            widget.item.meal.price * widget.item.quantity),
+                            widget.item.meal.prix * widget.item.quantity),
                         style: AppTextStyles.labelMedium
                             .copyWith(color: AppColors.primary),
                       ),

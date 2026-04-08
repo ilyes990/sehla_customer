@@ -33,9 +33,7 @@ class _LivreurHomeViewState extends State<LivreurHomeView> {
       final authVm = context.read<AuthViewModel>();
       final livreurId = int.tryParse(authVm.livreur?.id ?? '') ?? 0;
       if (livreurId > 0) {
-        context
-            .read<LivreurNotificationViewModel>()
-            .refreshBadge(livreurId);
+        context.read<LivreurNotificationViewModel>().refreshBadge(livreurId);
       }
     });
   }
@@ -114,9 +112,8 @@ class _LivreurHomeViewState extends State<LivreurHomeView> {
                             color: selected
                                 ? AppColors.primary
                                 : AppColors.textHint,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w400,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w400,
                           ),
                         ),
                       ],
@@ -167,8 +164,8 @@ class _LivreurDashboardTab extends StatelessWidget {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.paddingL),
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (ctx, i) => _buildPendingDeliveryCard(i).padding(
@@ -195,25 +192,32 @@ class _LivreurDashboardTab extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$greeting, $name 👋',
-              style: AppTextStyles.headlineLarge,
-            ).animate().fadeIn(duration: 500.ms).slideX(
-                  begin: -0.2,
-                  end: 0,
-                  duration: 500.ms,
-                  curve: Curves.easeOut,
-                ),
-            const SizedBox(height: 4),
-            Text(
-              'Prêt pour les livraisons d\'aujourd\'hui ?',
-              style: AppTextStyles.bodyMedium,
-            ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bonjour, $name 👋',
+                style: AppTextStyles.headlineLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ).animate().fadeIn(duration: 500.ms).slideX(
+                    begin: -0.2,
+                    end: 0,
+                    duration: 500.ms,
+                    curve: Curves.easeOut,
+                  ),
+              const SizedBox(height: 4),
+              Text(
+                'Prêt pour les livraisons d\'aujourd\'hui ?',
+                style: AppTextStyles.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
+            ],
+          ),
         ),
+        const SizedBox(width: 12),
         // Bell icon with badge
         Consumer2<AuthViewModel, LivreurNotificationViewModel>(
           builder: (ctx, authVm, notifVm, _) {
@@ -226,8 +230,7 @@ class _LivreurDashboardTab extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.primarySurface,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusM),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusM),
                   boxShadow: AppColors.cardShadow,
                 ),
                 child: Stack(
@@ -241,14 +244,26 @@ class _LivreurDashboardTab extends StatelessWidget {
                     ),
                     if (unread > 0)
                       Positioned(
-                        top: 8,
-                        right: 8,
+                        top: 2,
+                        right: 2,
                         child: Container(
-                          width: 9,
-                          height: 9,
+                          padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
                             color: AppColors.error,
                             shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unread > 9 ? '9+' : '$unread',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
@@ -463,7 +478,8 @@ class _LivreurDashboardTab extends StatelessWidget {
       ),
     )
         .animate()
-        .fadeIn(delay: Duration(milliseconds: 500 + index * 80), duration: 400.ms)
+        .fadeIn(
+            delay: Duration(milliseconds: 500 + index * 80), duration: 400.ms)
         .slideY(
           begin: 0.15,
           end: 0,
@@ -569,8 +585,8 @@ class _LivreurDeliveriesTab extends StatelessWidget {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.paddingL),
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (ctx, i) => _buildDeliveryHistoryCard(i),
@@ -584,7 +600,13 @@ class _LivreurDeliveriesTab extends StatelessWidget {
   }
 
   Widget _buildDeliveryHistoryCard(int i) {
-    final statuses = ['Livrée ✓', 'Livrée ✓', 'Refusée', 'Livrée ✓', 'Livrée ✓'];
+    final statuses = [
+      'Livrée ✓',
+      'Livrée ✓',
+      'Refusée',
+      'Livrée ✓',
+      'Livrée ✓'
+    ];
     final amounts = ['850 DA', '1 200 DA', '-', '650 DA', '950 DA'];
     final status = statuses[i];
     final isRefused = status == 'Refusée';
@@ -609,9 +631,7 @@ class _LivreurDeliveriesTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppConstants.radiusM),
             ),
             child: Icon(
-              isRefused
-                  ? Icons.cancel_rounded
-                  : Icons.check_circle_rounded,
+              isRefused ? Icons.cancel_rounded : Icons.check_circle_rounded,
               color: isRefused ? AppColors.error : AppColors.primary,
               size: 24,
             ),
@@ -760,8 +780,8 @@ class _LivreurEarningsTab extends StatelessWidget {
                     width: 68,
                     child: Text(
                       '${amounts[i]} DA',
-                      style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.textPrimary),
+                      style: AppTextStyles.labelSmall
+                          .copyWith(color: AppColors.textPrimary),
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -770,7 +790,8 @@ class _LivreurEarningsTab extends StatelessWidget {
             )
                 .animate()
                 .fadeIn(
-                    delay: Duration(milliseconds: 400 + i * 50), duration: 350.ms)
+                    delay: Duration(milliseconds: 400 + i * 50),
+                    duration: 350.ms)
                 .slideX(
                   begin: 0.1,
                   end: 0,
@@ -852,8 +873,8 @@ class _LivreurProfileTab extends StatelessWidget {
           _buildInfoRow(
               Icons.email_outlined, 'Email', livreur?.email ?? '—', 280),
           const SizedBox(height: 12),
-          _buildInfoRow(
-              Icons.badge_outlined, 'ID Livreur', '#${livreur?.id ?? '—'}', 360),
+          _buildInfoRow(Icons.badge_outlined, 'ID Livreur',
+              '#${livreur?.id ?? '—'}', 360),
           const SizedBox(height: 32),
           // Logout button
           SizedBox(
@@ -874,8 +895,7 @@ class _LivreurProfileTab extends StatelessWidget {
                 foregroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.error),
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusL),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusL),
                 ),
               ),
               icon: const Icon(Icons.logout_rounded),

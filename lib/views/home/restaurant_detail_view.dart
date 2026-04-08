@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import 'package:sehla_customer/views/base_view.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
@@ -8,8 +10,7 @@ import '../../core/app_text_styles.dart';
 import '../../core/design_system.dart';
 import '../../models/meal_model.dart';
 import '../../models/restaurant_model.dart';
-import '../../services/restaurant_service.dart';
-import '../widgets/meal_card.dart';
+import '../../view_models/restaurant_view_model.dart';
 import 'meal_detail_view.dart';
 
 class RestaurantDetailView extends StatefulWidget {
@@ -22,74 +23,60 @@ class RestaurantDetailView extends StatefulWidget {
 }
 
 class _RestaurantDetailViewState extends State<RestaurantDetailView> {
-  final RestaurantService _restaurantService = RestaurantService();
-  List<MealModel> _meals = [];
+  List<MealModel> meals = [];
   bool _isLoading = true;
-  String? _errorMessage;
+  String? _error;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadMeals();
-  }
-
-  Future<void> _loadMeals() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      final meals =
-          await _restaurantService.getMealsByRestaurant(widget.restaurant.id);
-      if (mounted) {
-        setState(() {
-          _meals = meals;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Impossible de charger le menu. Réessayez.';
-        });
-      }
+  Future<void> getMealsByRestaurant(
+      RestaurantViewModel vm, BuildContext context) async {
+    var result = await vm.loadPlats(idResto: widget.restaurant.id);
+    if (result is List<MealModel>) {
+      meals = result;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Plats chargés avec succès")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur lors du chargement des plats")),
+      );
     }
-  }
-
-  /// Group meals by their category, preserving insertion order
-  Map<String, List<MealModel>> get _mealsByCategory {
-    final map = <String, List<MealModel>>{};
-    for (final meal in _meals) {
-      map.putIfAbsent(meal.category, () => []).add(meal);
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _error = result is List<MealModel>
+            ? null
+            : 'Erreur lors du chargement des plats';
+      });
     }
-    return map;
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          _buildAppBar(context),
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInfo(),
-                const Divider(height: 1),
-                const SizedBox(height: 20),
-                _buildTags(),
-                const SizedBox(height: 24),
-                _buildMealsSection(context),
-                const SizedBox(height: 80),
-              ],
+    return BaseView<RestaurantViewModel>(onModelReady: (model) {
+      getMealsByRestaurant(model, context);
+    }, builder: (context, vm, _) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: CustomScrollView(
+          slivers: [
+            _buildAppBar(context),
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfo(),
+                  const Divider(height: 1),
+                  const SizedBox(height: 24),
+                  _buildMealsSection(),
+                  const SizedBox(height: 80),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildAppBar(BuildContext context) {
@@ -116,7 +103,8 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(
-              imageUrl: widget.restaurant.imageUrl,
+              imageUrl:
+                  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
               fit: BoxFit.cover,
               placeholder: (ctx, url) => const ShimmerBox(
                   width: double.infinity, height: 250, radius: 0),
@@ -147,110 +135,27 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.restaurant.name,
-                            style: AppTextStyles.headlineLarge)
-                        .animate()
-                        .fadeIn(duration: 400.ms)
-                        .slideX(begin: -0.1, end: 0, duration: 400.ms),
-                    const SizedBox(height: 4),
-                    Text(widget.restaurant.cuisineType,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600))
-                        .animate()
-                        .fadeIn(delay: 100.ms, duration: 400.ms),
-                  ],
-                ),
-              ),
-              RatingBadge(rating: widget.restaurant.rating),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _statBadge(Icons.timer_outlined,
-                  '${widget.restaurant.deliveryTimeMin} min', 'Livraison'),
-              const SizedBox(width: 12),
-              _statBadge(Icons.delivery_dining_outlined,
-                  '${widget.restaurant.deliveryFee.toInt()} DA', 'Frais'),
-              const SizedBox(width: 12),
-              _statBadge(Icons.shopping_bag_outlined,
-                  '${widget.restaurant.minOrder.toInt()} DA', 'Minimum'),
-            ],
-          ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-          const SizedBox(height: 12),
-          Text(widget.restaurant.description, style: AppTextStyles.bodyMedium)
+          Text(widget.restaurant.name, style: AppTextStyles.headlineLarge)
               .animate()
-              .fadeIn(delay: 250.ms, duration: 400.ms),
+              .fadeIn(duration: 400.ms)
+              .slideX(begin: -0.1, end: 0, duration: 400.ms),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _statBadge(IconData icon, String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.primarySurface,
-          borderRadius: BorderRadius.circular(AppConstants.radiusM),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: AppColors.primary, size: 20),
-            const SizedBox(height: 4),
-            Text(value,
-                style: AppTextStyles.labelLarge
-                    .copyWith(color: AppColors.primaryDark)),
-            Text(label, style: AppTextStyles.labelSmall),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTags() {
-    if (widget.restaurant.tags.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: widget.restaurant.tags.map((t) => TagChip(label: t)).toList(),
-      ),
-    ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
-  }
-
-  Widget _buildMealsSection(BuildContext context) {
+  Widget _buildMealsSection() {
     if (_isLoading) {
       return _buildLoadingShimmer();
     }
 
-    if (_errorMessage != null) {
+    if (_error != null) {
       return _buildError();
     }
 
-    if (_meals.isEmpty) {
+    if (meals.isEmpty) {
       return _buildEmpty();
-    }
-
-    // ── Categorized menu ──────────────────────────────────────────────────────
-    final categories = _mealsByCategory;
-    final categoryWidgets = <Widget>[];
-    int globalIndex = 0;
-
-    for (final entry in categories.entries) {
-      final startIdx = globalIndex;
-      categoryWidgets.add(
-          _buildCategorySection(context, entry.key, entry.value, startIdx));
-      globalIndex += entry.value.length;
     }
 
     return Column(
@@ -266,102 +171,139 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
           padding:
               const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
           child: Text(
-            '${_meals.length} plat${_meals.length > 1 ? 's' : ''} disponible${_meals.length > 1 ? 's' : ''}',
+            '${meals.length} plat${meals.length > 1 ? 's' : ''} disponible${meals.length > 1 ? 's' : ''}',
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.textHint),
           ),
         ),
         const SizedBox(height: 16),
-        ...categoryWidgets,
-      ],
-    );
-  }
-
-  Widget _buildCategorySection(
-    BuildContext context,
-    String category,
-    List<MealModel> meals,
-    int startIndex,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Category header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppConstants.paddingL, 8, AppConstants.paddingL, 12),
-          child: Row(
-            children: [
-              Container(
-                width: 4,
-                height: 20,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                category,
-                style: AppTextStyles.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radiusCircle),
-                ),
-                child: Text(
-                  '${meals.length}',
-                  style: AppTextStyles.labelSmall
-                      .copyWith(color: AppColors.primary),
-                ),
-              ),
-            ],
-          ),
-        ).animate().fadeIn(
-            delay: Duration(milliseconds: startIndex * 60), duration: 400.ms),
-
-        // Meals in this category
         Padding(
           padding:
               const EdgeInsets.symmetric(horizontal: AppConstants.paddingL),
           child: Column(
             children: meals.asMap().entries.map((e) {
               final i = e.key;
-              final m = e.value;
-              final delay = (startIndex + i) * 60;
-              return MealCard(
-                meal: m,
-                horizontal: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => MealDetailView(meal: m)),
-                ),
-              )
-                  .animate()
-                  .fadeIn(
-                    delay: Duration(milliseconds: delay),
-                    duration: 400.ms,
-                  )
-                  .slideY(
-                    begin: 0.1,
-                    end: 0,
-                    delay: Duration(milliseconds: delay),
-                    duration: 400.ms,
-                    curve: Curves.easeOut,
-                  );
+              final meal = e.value;
+              final delay = i * 60;
+              return _buildMealCard(meal, delay);
             }).toList(),
           ),
         ),
-        const SizedBox(height: 8),
-        const Divider(height: 1, indent: 24, endIndent: 24),
-        const SizedBox(height: 16),
       ],
     );
+  }
+
+  Widget _buildMealCard(MealModel meal, int delay) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => MealDetailView(meal: meal)),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppConstants.radiusL),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Image
+              ClipRRect(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppConstants.radiusL),
+                  bottomLeft: Radius.circular(AppConstants.radiusL),
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: meal.imageUrl,
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.cover,
+                  placeholder: (ctx, url) =>
+                      ShimmerBox(width: 90, height: 90, radius: 0),
+                  errorWidget: (ctx, url, err) => Container(
+                    width: 90,
+                    height: 90,
+                    color: AppColors.surfaceVariant,
+                    child:
+                        const Icon(Icons.fastfood, color: AppColors.textHint),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Info
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        meal.nom,
+                        style:
+                            AppTextStyles.headlineSmall.copyWith(fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatPrice(meal.prix),
+                        style: AppTextStyles.price.copyWith(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Add button
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Center(
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusS),
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    )
+        .animate()
+        .fadeIn(
+          delay: Duration(milliseconds: delay),
+          duration: 400.ms,
+        )
+        .slideY(
+          begin: 0.1,
+          end: 0,
+          delay: Duration(milliseconds: delay),
+          duration: 400.ms,
+          curve: Curves.easeOut,
+        );
+  }
+
+  /// French locale price: "1 200 DZD"
+  static String _formatPrice(double prix) {
+    final str = prix.toInt().toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('\u202f');
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} DZD';
   }
 
   Widget _buildLoadingShimmer() {
@@ -434,7 +376,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
             Text('Erreur de chargement', style: AppTextStyles.headlineMedium),
             const SizedBox(height: 8),
             Text(
-              _errorMessage ?? '',
+              _error ?? '',
               style: AppTextStyles.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -443,7 +385,14 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView> {
               label: 'Réessayer',
               variant: ButtonVariant.outline,
               width: 160,
-              onPressed: _loadMeals,
+              onPressed: () {
+                setState(() {
+                  _isLoading = true;
+                  _error = null;
+                });
+                getMealsByRestaurant(
+                    context.read<RestaurantViewModel>(), context);
+              },
             ),
           ],
         ),

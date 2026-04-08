@@ -24,7 +24,7 @@ class AppConstants {
   static const String routeLivreurNotifications =
       '/livreur/notifications';
 
-  // Routes — Plats
+  // ── Bottom Nav ─────────────────────────────────────────────────────────────
   static const String routePlatsList = '/plats';
   static const String routePlatCreate = '/plats/create';
   static const String routePlatEdit = '/plats/edit';
